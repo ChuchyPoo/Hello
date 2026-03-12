@@ -1,274 +1,650 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Coke Machine</title>
+  <meta charset="UTF-8"/>
+  <title>Oval Office Coke Button</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #1a1a2e;
-      font-family: 'Segoe UI', sans-serif;
-      overflow: hidden;
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { overflow:hidden; background:#000; font-family:'Georgia',serif; }
+    canvas { display:block; }
+    #hud {
+      position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      color:#f5c518; font-size:1.4rem; letter-spacing:2px;
+      text-shadow:0 2px 12px rgba(0,0,0,0.9);
+      pointer-events:none; white-space:nowrap;
     }
-
-    h1 {
-      color: #fff;
-      font-size: 2rem;
-      margin-bottom: 12px;
-      letter-spacing: 2px;
-      text-shadow: 0 0 20px rgba(220,30,30,0.7);
-    }
-
-    #score-display {
-      color: #f5c518;
-      font-size: 1.2rem;
-      margin-bottom: 40px;
-      letter-spacing: 1px;
-    }
-
-    /* Button wrapper with shadow ring */
-    #btn-wrapper {
-      position: relative;
-      width: 200px;
-      height: 200px;
-      margin-bottom: 60px;
-    }
-
-    #big-button {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #ff4444, #cc0000 60%, #7a0000);
-      border: none;
-      cursor: pointer;
-      box-shadow:
-        0 8px 0 #6a0000,
-        0 12px 30px rgba(200,0,0,0.6),
-        inset 0 2px 8px rgba(255,180,180,0.3);
-      transition: transform 0.08s ease, box-shadow 0.08s ease;
-      outline: none;
-      position: relative;
-      top: 0;
-    }
-
-    #big-button:hover {
-      box-shadow:
-        0 8px 0 #6a0000,
-        0 16px 40px rgba(200,0,0,0.8),
-        inset 0 2px 8px rgba(255,180,180,0.3);
-      transform: scale(1.04);
-    }
-
-    #big-button:active,
-    #big-button.pressed {
-      transform: translateY(6px) scale(0.97);
-      box-shadow:
-        0 2px 0 #6a0000,
-        0 4px 15px rgba(200,0,0,0.5),
-        inset 0 2px 8px rgba(255,180,180,0.3);
-    }
-
-    /* Label on the button */
-    #big-button::after {
-      content: "PUSH";
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: rgba(255,255,255,0.85);
-      font-size: 1.6rem;
-      font-weight: 900;
-      letter-spacing: 4px;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.5);
-      pointer-events: none;
-    }
-
-    /* Coke can area */
-    #output {
-      min-height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      max-width: 600px;
-      padding: 0 20px;
-    }
-
-    .can {
-      font-size: 3rem;
-      animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-      display: inline-block;
-      cursor: default;
-      user-select: none;
-    }
-
-    @keyframes pop-in {
-      0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
-      60%  { transform: scale(1.2) rotate(5deg);  opacity: 1; }
-      100% { transform: scale(1) rotate(0deg);    opacity: 1; }
-    }
-
-    /* Floating text that flies up on click */
-    .float-text {
-      position: fixed;
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: #f5c518;
-      pointer-events: none;
-      animation: float-up 1.2s ease-out forwards;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-      z-index: 999;
-    }
-
-    @keyframes float-up {
-      0%   { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-120px) scale(1.3); }
-    }
-
-    /* Particle burst */
-    .particle {
-      position: fixed;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      pointer-events: none;
-      animation: burst 0.8s ease-out forwards;
-      z-index: 998;
-    }
-
-    @keyframes burst {
-      0%   { opacity: 1; transform: translate(0,0) scale(1); }
-      100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
-    }
-
     #message {
-      margin-top: 24px;
-      font-size: 1.1rem;
-      color: #aaa;
-      letter-spacing: 1px;
-      min-height: 1.5em;
-      text-align: center;
+      position:fixed; bottom:36px; left:50%; transform:translateX(-50%);
+      color:#fff; font-size:1.1rem; letter-spacing:1px;
+      text-shadow:0 2px 10px rgba(0,0,0,1);
+      pointer-events:none; text-align:center;
     }
-
-    #clear-btn {
-      margin-top: 16px;
-      background: transparent;
-      border: 1px solid #555;
-      color: #888;
-      padding: 6px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: border-color 0.2s, color 0.2s;
+    #hint {
+      position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
+      color:rgba(255,255,255,0.45); font-size:0.8rem;
+      pointer-events:none;
     }
-    #clear-btn:hover { border-color: #aaa; color: #ccc; }
   </style>
 </head>
 <body>
+  <div id="hud">Cokes collected: <span id="count">0</span></div>
+  <div id="message">Click the button, Mr. President</div>
+  <div id="hint">click the red button</div>
 
-  <h1>COKE MACHINE</h1>
-  <div id="score-display">Cokes collected: <span id="count">0</span></div>
-
-  <div id="btn-wrapper">
-    <button id="big-button" aria-label="Get a Coke"></button>
-  </div>
-
-  <div id="output"></div>
-  <div id="message">Press the button to get a Coke!</div>
-  <button id="clear-btn">Clear tray</button>
-
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
   <script>
-    const button   = document.getElementById('big-button');
-    const output   = document.getElementById('output');
-    const countEl  = document.getElementById('count');
-    const message  = document.getElementById('message');
-    const clearBtn = document.getElementById('clear-btn');
+  (function(){
+    // ── Renderer ──────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.appendChild(renderer.domElement);
 
-    let count = 0;
+    // ── Scene / Camera ─────────────────────────────────────────
+    const scene  = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a1f0e);
+    scene.fog = new THREE.Fog(0x1a1208, 12, 25);
 
-    const messages = [
-      "Enjoy your Coke! 🥤",
-      "Ice cold! 🧊",
-      "Classic choice!",
-      "You deserve it!",
-      "Another one!",
-      "Coke addict detected 👀",
-      "Keep 'em coming!",
-      "The real thing!",
-      "Refreshing!",
-      "You can't stop, can you?",
-      "Coke #" + (count + 1) + " incoming!",
-      "Unlimited Cokes! 🎉",
+    const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 60);
+    camera.position.set(0, 2.8, 7);
+    camera.lookAt(0, 1.2, 0);
+
+    // ── Lighting ───────────────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xfff4d6, 0.55));
+
+    const sun = new THREE.DirectionalLight(0xfff8e0, 1.4);
+    sun.position.set(4, 9, 4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048,2048);
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far  = 30;
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -8;
+    sun.shadow.camera.right = sun.shadow.camera.top  =  8;
+    scene.add(sun);
+
+    const fill = new THREE.PointLight(0xffeedd, 0.9, 18);
+    fill.position.set(-4, 5, 3);
+    scene.add(fill);
+
+    // Window glow (left/right)
+    [-5, 5].forEach(x => {
+      const wl = new THREE.PointLight(0xd4eaff, 0.6, 10);
+      wl.position.set(x, 3, -4);
+      scene.add(wl);
+    });
+
+    // ── Helper: box ────────────────────────────────────────────
+    function box(w,h,d, color, rx,ry,rz, x,y,z, shadow=true){
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(w,h,d),
+        new THREE.MeshLambertMaterial({color})
+      );
+      m.rotation.set(rx||0,ry||0,rz||0);
+      m.position.set(x,y,z);
+      if(shadow){ m.castShadow=true; m.receiveShadow=true; }
+      scene.add(m); return m;
+    }
+
+    // ── FLOOR: oval carpet with presidential seal ──────────────
+    (function(){
+      const C = document.createElement('canvas');
+      C.width = C.height = 1024;
+      const ctx = C.getContext('2d');
+
+      // beige base
+      ctx.fillStyle = '#c4b08a'; ctx.fillRect(0,0,1024,1024);
+
+      // outer oval border
+      ctx.save();
+      ctx.strokeStyle='#a08050'; ctx.lineWidth=50;
+      ctx.beginPath();
+      ctx.ellipse(512,512,480,480,0,0,Math.PI*2);
+      ctx.stroke(); ctx.restore();
+
+      // dark ring
+      ctx.save();
+      ctx.strokeStyle='#8a6a38'; ctx.lineWidth=12;
+      ctx.beginPath(); ctx.arc(512,512,350,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+
+      // Eagle (simplified silhouette)
+      ctx.save();
+      ctx.fillStyle='#7a5c28';
+      // body
+      ctx.beginPath(); ctx.ellipse(512,540,55,80,0,0,Math.PI*2); ctx.fill();
+      // wings
+      ctx.beginPath(); ctx.ellipse(400,510,100,28,-0.3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(624,510,100,28,0.3,0,Math.PI*2); ctx.fill();
+      // head
+      ctx.beginPath(); ctx.arc(512,466,28,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // stars ring
+      ctx.fillStyle='#8a6a38';
+      for(let i=0;i<13;i++){
+        const a=(i/13)*Math.PI*2, r=295;
+        ctx.beginPath();
+        ctx.arc(512+Math.cos(a)*r,512+Math.sin(a)*r,10,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(C);
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(9,64),
+        new THREE.MeshLambertMaterial({map:tex})
+      );
+      floor.rotation.x=-Math.PI/2;
+      floor.receiveShadow=true;
+      scene.add(floor);
+    })();
+
+    // ── WALLS: curved oval office ──────────────────────────────
+    (function(){
+      // Back curved wall
+      const wgeo = new THREE.CylinderGeometry(10,10,5.5,48,1,true,
+                                               Math.PI*0.08, Math.PI*0.84);
+      const wall = new THREE.Mesh(wgeo,
+        new THREE.MeshLambertMaterial({color:0xf0e8d8, side:THREE.BackSide}));
+      wall.position.y=2.75; scene.add(wall);
+
+      // Wainscoting
+      const wain = new THREE.Mesh(
+        new THREE.CylinderGeometry(9.9,9.9,1.3,48,1,true,
+                                   Math.PI*0.08, Math.PI*0.84),
+        new THREE.MeshLambertMaterial({color:0xe0d4b8, side:THREE.BackSide})
+      );
+      wain.position.y=0.65; scene.add(wain);
+
+      // Chair rail
+      const rail = new THREE.Mesh(
+        new THREE.CylinderGeometry(9.88,9.88,0.07,48,1,true,
+                                   Math.PI*0.08, Math.PI*0.84),
+        new THREE.MeshLambertMaterial({color:0xffffff, side:THREE.BackSide})
+      );
+      rail.position.y=1.3; scene.add(rail);
+
+      // Ceiling
+      const ceil = new THREE.Mesh(
+        new THREE.CircleGeometry(10,48),
+        new THREE.MeshLambertMaterial({color:0xfdf8f0})
+      );
+      ceil.rotation.x=Math.PI/2; ceil.position.y=5.5; scene.add(ceil);
+
+      // Crown molding
+      const crown = new THREE.Mesh(
+        new THREE.CylinderGeometry(9.85,9.85,0.12,48,1,true,
+                                   Math.PI*0.08, Math.PI*0.84),
+        new THREE.MeshLambertMaterial({color:0xffffff, side:THREE.BackSide})
+      );
+      crown.position.y=5.1; scene.add(crown);
+    })();
+
+    // ── WINDOWS ────────────────────────────────────────────────
+    function makeWindow(x,y,z,ry){
+      const g = new THREE.Group();
+      // frame
+      const frm = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6,2.6,0.12),
+        new THREE.MeshLambertMaterial({color:0xffffff})
+      );
+      g.add(frm);
+      // sky glass
+      const sky = new THREE.Mesh(
+        new THREE.BoxGeometry(1.28,2.18,0.06),
+        new THREE.MeshPhongMaterial({color:0x87ceeb,transparent:true,opacity:0.55,shininess:200})
+      );
+      sky.position.z=0.03; g.add(sky);
+      // curtains
+      const cm = new THREE.MeshLambertMaterial({color:0x8b1c1c});
+      [-0.95,0.95].forEach(cx=>{
+        const c=new THREE.Mesh(new THREE.BoxGeometry(0.32,2.7,0.12),cm);
+        c.position.x=cx; g.add(c);
+      });
+      // pelmet
+      const pel=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.2,0.2),
+        new THREE.MeshLambertMaterial({color:0x7a1414}));
+      pel.position.y=1.35; g.add(pel);
+      g.position.set(x,y,z); g.rotation.y=ry;
+      scene.add(g);
+    }
+    makeWindow(-6.8, 2.5, -4.5,  0.45);
+    makeWindow( 6.8, 2.5, -4.5, -0.45);
+    makeWindow(-8.2, 2.5, -1.0,  0.9);
+    makeWindow( 8.2, 2.5, -1.0, -0.9);
+
+    // ── FIREPLACE (back wall center) ───────────────────────────
+    (function(){
+      // surround
+      const sm = new THREE.MeshLambertMaterial({color:0xe8e0d0});
+      const surround = new THREE.Mesh(new THREE.BoxGeometry(2.2,2.0,0.25),sm);
+      surround.position.set(0,1.0,-8.2); scene.add(surround);
+      // opening
+      const om = new THREE.MeshLambertMaterial({color:0x111111});
+      const opening = new THREE.Mesh(new THREE.BoxGeometry(1.4,1.2,0.3),om);
+      opening.position.set(0,0.7,-8.1); scene.add(opening);
+      // mantel shelf
+      const mm = new THREE.MeshLambertMaterial({color:0xf0ece4});
+      const mantel = new THREE.Mesh(new THREE.BoxGeometry(2.6,0.12,0.35),mm);
+      mantel.position.set(0,2.06,-8.1); scene.add(mantel);
+      // clock on mantel
+      const clock = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.4,0.15),
+        new THREE.MeshLambertMaterial({color:0x3d2b0c}));
+      clock.position.set(0,2.35,-7.95); scene.add(clock);
+      const clockface = new THREE.Mesh(new THREE.CircleGeometry(0.12,16),
+        new THREE.MeshLambertMaterial({color:0xf5f0e8}));
+      clockface.position.set(0,2.35,-7.87); scene.add(clockface);
+    })();
+
+    // ── FLAGS ──────────────────────────────────────────────────
+    function makeFlag(x,z){
+      // pole
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,3.8,8),
+        new THREE.MeshLambertMaterial({color:0xd4a843}));
+      pole.position.set(x,1.9,z); scene.add(pole);
+      pole.castShadow=true;
+      // finial
+      const fin=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),
+        new THREE.MeshPhongMaterial({color:0xd4a843,shininess:100}));
+      fin.position.set(x,3.85,z); scene.add(fin);
+      // flag canvas
+      const C=document.createElement('canvas');
+      C.width=320; C.height=170;
+      const ctx=C.getContext('2d');
+      const sc=['#B22234','#ffffff'];
+      for(let i=0;i<13;i++){
+        ctx.fillStyle=sc[i%2];
+        ctx.fillRect(0,i*(170/13),320,170/13+1);
+      }
+      ctx.fillStyle='#3C3B6E'; ctx.fillRect(0,0,128,90);
+      ctx.fillStyle='#ffffff';
+      for(let r=0;r<5;r++) for(let c=0;c<6;c++){
+        ctx.beginPath();
+        ctx.arc(12+c*20,10+r*17,5,0,Math.PI*2); ctx.fill();
+      }
+      const f=new THREE.Mesh(new THREE.PlaneGeometry(1.0,0.53),
+        new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(C),side:THREE.DoubleSide}));
+      f.position.set(x+0.5,3.22,z); scene.add(f);
+    }
+    makeFlag(-2.8,-7.5);
+    makeFlag( 1.6,-7.5);
+
+    // ── SOFA / CHAIRS (background dressing) ───────────────────
+    (function(){
+      const sofaColor=0xd4c4a0, legC=0x4a3010;
+      // sofa
+      box(3,0.55,0.9, sofaColor, 0,0,0, 0,0.275,-5.5);
+      box(3,0.65,0.25,sofaColor, 0,0,0, 0,0.925,-5.87);
+      box(0.25,0.65,0.9,sofaColor,0,0,0,-1.625,0.925,-5.5);
+      box(0.25,0.65,0.9,sofaColor,0,0,0, 1.625,0.925,-5.5);
+      for(const [px,pz] of [[-1.3,-5.2],[1.3,-5.2],[-1.3,-5.8],[1.3,-5.8]]){
+        box(0.08,0.15,0.08,legC,0,0,0,px,0.075,pz);
+      }
+      // side tables
+      [-2.2,2.2].forEach(sx=>{
+        box(0.6,0.55,0.6,0x8b6914,0,0,0,sx,0.275,-5.5);
+        // lamp
+        const ls=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.6,8),
+          new THREE.MeshLambertMaterial({color:0xb8880c}));
+        ls.position.set(sx,0.85,-5.5); scene.add(ls);
+        const shade=new THREE.Mesh(new THREE.ConeGeometry(0.25,0.4,12,1,true),
+          new THREE.MeshLambertMaterial({color:0xf5dfa0,side:THREE.DoubleSide}));
+        shade.position.set(sx,1.25,-5.5); scene.add(shade);
+        // lamp light
+        const ll=new THREE.PointLight(0xfff0c0,0.5,4);
+        ll.position.set(sx,1.5,-5.5); scene.add(ll);
+      });
+    })();
+
+    // ── RESOLUTE DESK ──────────────────────────────────────────
+    const DESK_Z = 1.5;
+    (function(){
+      const dk=0x4a2c10, dl=0x5e3818, dh=0x6b4020;
+      // top surface
+      const top=new THREE.Mesh(new THREE.BoxGeometry(2.9,0.1,1.5),
+        new THREE.MeshLambertMaterial({color:dh}));
+      top.position.set(0,1.13,DESK_Z);
+      top.castShadow=top.receiveShadow=true; scene.add(top);
+      // leather pad
+      const pad=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.015,1.05),
+        new THREE.MeshLambertMaterial({color:0x1c3a1c}));
+      pad.position.set(0,1.185,DESK_Z); scene.add(pad);
+      // edge trim
+      const trim=new THREE.Mesh(new THREE.BoxGeometry(2.92,0.04,1.52),
+        new THREE.MeshLambertMaterial({color:dl}));
+      trim.position.set(0,1.08,DESK_Z); scene.add(trim);
+      // left pedestal
+      const lp=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.08,1.42),
+        new THREE.MeshLambertMaterial({color:dk}));
+      lp.position.set(-0.88,0.54,DESK_Z);
+      lp.castShadow=lp.receiveShadow=true; scene.add(lp);
+      // right pedestal
+      const rp=lp.clone();
+      rp.position.x=0.88; scene.add(rp);
+      // drawers
+      for(let i=0;i<3;i++){
+        [-0.88,0.88].forEach(px=>{
+          const dr=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.28,0.04),
+            new THREE.MeshLambertMaterial({color:0x3a2008}));
+          dr.position.set(px, 0.78-i*0.32, DESK_Z+0.72);
+          scene.add(dr);
+          const kn=new THREE.Mesh(new THREE.SphereGeometry(0.025,8,8),
+            new THREE.MeshPhongMaterial({color:0xd4a843,shininess:120}));
+          kn.position.set(px,0.78-i*0.32,DESK_Z+0.76); scene.add(kn);
+        });
+      }
+      // desk items: pen holder, papers
+      const ph=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.055,0.2,12),
+        new THREE.MeshLambertMaterial({color:0x1a1a1a}));
+      ph.position.set(-0.8,1.24,DESK_Z-0.3); scene.add(ph);
+      const paper=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.008,0.3),
+        new THREE.MeshLambertMaterial({color:0xf8f4ec}));
+      paper.position.set(0.6,1.19,DESK_Z-0.1); scene.add(paper);
+    })();
+
+    // ── THE BIG RED BUTTON ────────────────────────────────────
+    const buttonGroup = new THREE.Group();
+    buttonGroup.position.set(0.25, 1.18, DESK_Z-0.15);
+    scene.add(buttonGroup);
+
+    // Housing
+    const housing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24,0.27,0.13,32),
+      new THREE.MeshLambertMaterial({color:0x1a1a1a})
+    );
+    housing.position.y=0.065; buttonGroup.add(housing);
+
+    // Housing top ring
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.22,0.025,8,32),
+      new THREE.MeshPhongMaterial({color:0x333333,shininess:80})
+    );
+    ring.rotation.x=Math.PI/2; ring.position.y=0.13; buttonGroup.add(ring);
+
+    // Button cap (hemisphere)
+    const buttonCapGeo = new THREE.SphereGeometry(0.2,32,16,0,Math.PI*2,0,Math.PI/2);
+    const buttonCapMat = new THREE.MeshPhongMaterial({
+      color:0xdd0000, shininess:160, specular:0xff5555
+    });
+    const buttonCap = new THREE.Mesh(buttonCapGeo, buttonCapMat);
+    buttonCap.position.y=0.13; buttonGroup.add(buttonCap);
+
+    // Specular highlight blob
+    const hilight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.055,12,8),
+      new THREE.MeshPhongMaterial({color:0xff9999,transparent:true,opacity:0.7,shininess:300})
+    );
+    hilight.position.set(-0.06,0.26,-0.06); buttonGroup.add(hilight);
+
+    // Hit zone
+    const hitZone = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35,0.35,0.55,16),
+      new THREE.MeshBasicMaterial({visible:false})
+    );
+    hitZone.position.y=0.2; buttonGroup.add(hitZone);
+
+    // Gold nameplate
+    const plate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55,0.04,0.14),
+      new THREE.MeshPhongMaterial({color:0xd4a843,shininess:120})
+    );
+    plate.position.set(0, 1.195, DESK_Z+0.05); scene.add(plate);
+
+    // ── HAND ──────────────────────────────────────────────────
+    const handGroup = new THREE.Group();
+    const skinMat = new THREE.MeshPhongMaterial({color:0xf4a460, shininess:40, specular:0x331100});
+
+    // Palm block
+    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.1,0.36), skinMat);
+    handGroup.add(palm);
+
+    // Knuckle row detail
+    const knuckleRow = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.04,0.04),
+      new THREE.MeshPhongMaterial({color:0xe09050,shininess:60}));
+    knuckleRow.position.set(0,0.05,-0.18); handGroup.add(knuckleRow);
+
+    // Four fingers
+    const fingerDefs = [
+      {x:-0.115, len:0.20, w:0.055},
+      {x:-0.038, len:0.24, w:0.058},
+      {x: 0.038, len:0.23, w:0.057},
+      {x: 0.115, len:0.19, w:0.052},
+    ];
+    fingerDefs.forEach(fd=>{
+      // proximal phalanx
+      const seg1=new THREE.Mesh(
+        new THREE.CylinderGeometry(fd.w/2,fd.w/2*1.05, fd.len*0.45,10),skinMat);
+      seg1.position.set(fd.x, 0.05+fd.len*0.225, -0.2);
+      seg1.rotation.x=0.15; handGroup.add(seg1);
+      // middle
+      const seg2=new THREE.Mesh(
+        new THREE.CylinderGeometry(fd.w/2*0.9,fd.w/2, fd.len*0.32,10),skinMat);
+      seg2.position.set(fd.x, 0.05+fd.len*0.55, -0.24);
+      seg2.rotation.x=0.1; handGroup.add(seg2);
+      // distal (fingertip)
+      const seg3=new THREE.Mesh(
+        new THREE.SphereGeometry(fd.w/2*0.85, 10,8),skinMat);
+      seg3.position.set(fd.x, 0.05+fd.len*0.82, -0.27);
+      handGroup.add(seg3);
+      // fingernail
+      const nail=new THREE.Mesh(new THREE.BoxGeometry(fd.w*0.7,0.01,0.04),
+        new THREE.MeshPhongMaterial({color:0xffddb8,shininess:120}));
+      nail.position.set(fd.x,0.05+fd.len*0.85,-0.285);
+      handGroup.add(nail);
+    });
+
+    // Thumb
+    const thumbBase=new THREE.Mesh(
+      new THREE.CylinderGeometry(0.038,0.042,0.18,10),skinMat);
+    thumbBase.rotation.set(0.3,0.5,-Math.PI/3);
+    thumbBase.position.set(0.19,0.02,-0.04); handGroup.add(thumbBase);
+    const thumbTip=new THREE.Mesh(
+      new THREE.SphereGeometry(0.036,10,8),skinMat);
+    thumbTip.position.set(0.22,-0.06,0.02); handGroup.add(thumbTip);
+
+    // Wrist / cuff
+    const cuff=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.2,0.28,14),
+      new THREE.MeshLambertMaterial({color:0xf5f0ea}));
+    cuff.position.set(0,-0.14,0.12); handGroup.add(cuff);
+    const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.22,0.5,14),
+      new THREE.MeshLambertMaterial({color:0x1a2d50}));
+    sleeve.position.set(0,-0.38,0.12); handGroup.add(sleeve);
+
+    // Initial position: hovering above button
+    handGroup.position.set(0.25, 2.35, DESK_Z-0.15);
+    handGroup.rotation.x = 0.35;
+    scene.add(handGroup);
+
+    // ── COKE CANS ─────────────────────────────────────────────
+    const activeCans = [];
+
+    function makeCokeCan(){
+      const g = new THREE.Group();
+      const canMat = new THREE.MeshPhongMaterial({color:0xcc0000,shininess:90});
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(0.065,0.065,0.21,20),canMat);
+      g.add(body);
+      const top=new THREE.Mesh(new THREE.CylinderGeometry(0.054,0.064,0.022,20),
+        new THREE.MeshPhongMaterial({color:0xc0c0c0,shininess:180}));
+      top.position.y=0.116; g.add(top);
+      const bot=top.clone(); bot.position.y=-0.116; g.add(bot);
+      // white wave stripe
+      const stripe=new THREE.Mesh(
+        new THREE.CylinderGeometry(0.067,0.067,0.08,20,1,true),
+        new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.BackSide,transparent:true,opacity:0.9}));
+      g.add(stripe);
+      // tab
+      const tab=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.005,0.04),
+        new THREE.MeshPhongMaterial({color:0xaaaaaa,shininess:200}));
+      tab.position.set(0.01,0.128,-0.02); g.add(tab);
+      return g;
+    }
+
+    function spawnCoke(){
+      const can = makeCokeCan();
+      can.position.set(0.25, 1.4, DESK_Z-0.15);
+      scene.add(can);
+      const ang = (Math.random()-0.5)*Math.PI*1.2;
+      const spd = 0.055+Math.random()*0.04;
+      activeCans.push({
+        mesh: can,
+        vx: Math.sin(ang)*spd,
+        vy: 0.12+Math.random()*0.07,
+        vz: -spd*0.4 - Math.random()*0.04,
+        rx: (Math.random()-0.5)*0.18,
+        rz: (Math.random()-0.5)*0.12,
+        life: 1.8
+      });
+    }
+
+    // ── FLOAT TEXT SPRITES ────────────────────────────────────
+    const floatTexts=[];
+    const floatMsgs=[
+      "Enjoy your Coke!","Ice cold! 🧊","The real thing!",
+      "Executive order: COKE","Presidential refreshment!","Yes we can! 🥤",
+      "Coke time!","Classified: top secret flavour","Drink up, Mr. President"
     ];
 
-    const colors = ['#e63946','#f4a261','#e9c46a','#2a9d8f','#457b9d','#a8dadc','#f72585','#7209b7'];
+    function spawnFloatText(txt){
+      const C=document.createElement('canvas');
+      C.width=512; C.height=80;
+      const ctx=C.getContext('2d');
+      ctx.font='bold 42px Georgia';
+      ctx.fillStyle='#f5c518';
+      ctx.textAlign='center';
+      ctx.shadowColor='rgba(0,0,0,0.8)';
+      ctx.shadowBlur=8;
+      ctx.fillText(txt,256,54);
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+        map:new THREE.CanvasTexture(C),transparent:true
+      }));
+      sp.scale.set(2,0.32,1);
+      sp.position.set(0.25+(Math.random()-0.5)*0.5, 1.9, DESK_Z-0.5);
+      scene.add(sp);
+      floatTexts.push({sp,vy:0.018,life:1.0});
+    }
 
-    function spawnParticles(x, y) {
-      for (let i = 0; i < 16; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        const angle = (i / 16) * 360;
-        const dist  = 60 + Math.random() * 80;
-        const rad   = angle * Math.PI / 180;
-        p.style.left = x + 'px';
-        p.style.top  = y + 'px';
-        p.style.background = colors[Math.floor(Math.random() * colors.length)];
-        p.style.setProperty('--tx', Math.cos(rad) * dist + 'px');
-        p.style.setProperty('--ty', Math.sin(rad) * dist + 'px');
-        document.body.appendChild(p);
-        p.addEventListener('animationend', () => p.remove());
+    // ── INPUT ─────────────────────────────────────────────────
+    const raycaster = new THREE.Raycaster();
+    const mouse     = new THREE.Vector2();
+    let cokeCount   = 0;
+    let handState   = 'idle';  // idle | pressing | hold | releasing
+    let handTimer   = 0;
+    let handBaseY   = 2.35;
+    const PRESS_Y   = 1.68;
+
+    const countEl   = document.getElementById('count');
+    const msgEl     = document.getElementById('message');
+
+    function doPress(){
+      if(handState !== 'idle') return;
+      handState = 'pressing';
+      cokeCount++;
+      countEl.textContent = cokeCount;
+      msgEl.textContent = floatMsgs[Math.floor(Math.random()*floatMsgs.length)];
+      for(let i=0;i<3;i++) setTimeout(spawnCoke, i*110);
+      spawnFloatText('+1 🥤');
+    }
+
+    renderer.domElement.addEventListener('click', e=>{
+      mouse.x=(e.clientX/innerWidth)*2-1;
+      mouse.y=-(e.clientY/innerHeight)*2+1;
+      raycaster.setFromCamera(mouse,camera);
+      if(raycaster.intersectObjects(buttonGroup.children,true).length) doPress();
+    });
+
+    // Cursor hint
+    renderer.domElement.addEventListener('mousemove', e=>{
+      mouse.x=(e.clientX/innerWidth)*2-1;
+      mouse.y=-(e.clientY/innerHeight)*2+1;
+      raycaster.setFromCamera(mouse,camera);
+      const hit=raycaster.intersectObjects(buttonGroup.children,true).length>0;
+      renderer.domElement.style.cursor=hit?'pointer':'default';
+    });
+
+    // ── ANIMATE ───────────────────────────────────────────────
+    const clock = new THREE.Clock();
+    let t = 0;
+
+    function animate(){
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      t += dt;
+
+      // Hand state machine
+      switch(handState){
+        case 'idle':
+          // hover bob
+          handGroup.position.y = handBaseY + Math.sin(t*1.8)*0.035;
+          break;
+        case 'pressing':
+          handGroup.position.y -= dt*4.5;
+          if(handGroup.position.y <= PRESS_Y){
+            handGroup.position.y = PRESS_Y;
+            // squish button
+            buttonCap.scale.y = 0.65;
+            buttonCap.position.y = 0.09;
+            handState = 'hold'; handTimer = 0.12;
+          }
+          break;
+        case 'hold':
+          handTimer -= dt;
+          if(handTimer <= 0) handState = 'releasing';
+          break;
+        case 'releasing':
+          handGroup.position.y += dt*5;
+          // restore button
+          buttonCap.scale.y = Math.min(1, buttonCap.scale.y + dt*4);
+          buttonCap.position.y = Math.min(0.13, buttonCap.position.y + dt*0.3);
+          if(handGroup.position.y >= handBaseY){
+            handGroup.position.y = handBaseY;
+            handState = 'idle';
+          }
+          break;
       }
+
+      // Coke cans physics
+      for(let i=activeCans.length-1;i>=0;i--){
+        const c=activeCans[i];
+        c.mesh.position.x+=c.vx;
+        c.mesh.position.y+=c.vy;
+        c.mesh.position.z+=c.vz;
+        c.vy -= dt*3.5;
+        c.mesh.rotation.x+=c.rx;
+        c.mesh.rotation.z+=c.rz;
+        c.life-=dt*0.55;
+        c.mesh.material && (c.mesh.material.opacity=c.life);
+        if(c.life<=0||c.mesh.position.y<-1){
+          scene.remove(c.mesh); activeCans.splice(i,1);
+        }
+      }
+
+      // Float texts
+      for(let i=floatTexts.length-1;i>=0;i--){
+        const f=floatTexts[i];
+        f.sp.position.y+=f.vy;
+        f.life-=dt*0.7;
+        f.sp.material.opacity=Math.max(0,f.life);
+        if(f.life<=0){ scene.remove(f.sp); floatTexts.splice(i,1); }
+      }
+
+      // Subtle camera drift
+      camera.position.x = Math.sin(t*0.18)*0.12;
+      camera.position.y = 2.8 + Math.sin(t*0.25)*0.06;
+      camera.lookAt(0,1.2,0);
+
+      renderer.render(scene,camera);
     }
+    animate();
 
-    function spawnFloatText(x, y, text) {
-      const el = document.createElement('div');
-      el.className = 'float-text';
-      el.textContent = text;
-      el.style.left = (x - 40) + 'px';
-      el.style.top  = (y - 20) + 'px';
-      document.body.appendChild(el);
-      el.addEventListener('animationend', () => el.remove());
-    }
-
-    button.addEventListener('click', (e) => {
-      count++;
-      countEl.textContent = count;
-
-      // Add Coke can emoji
-      const can = document.createElement('span');
-      can.className = 'can';
-      can.textContent = '🥤';
-      can.title = 'Coke #' + count;
-      output.appendChild(can);
-
-      // Update message
-      const msg = messages[Math.floor(Math.random() * messages.length)];
-      message.textContent = msg.replace(/Coke #\d+/, 'Coke #' + count);
-
-      // Visual effects at button center
-      const rect = button.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top  + rect.height / 2;
-      spawnParticles(cx, cy);
-      spawnFloatText(cx, cy, '+1 🥤');
-
-      // Press animation
-      button.classList.add('pressed');
-      setTimeout(() => button.classList.remove('pressed'), 150);
+    window.addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth,innerHeight);
     });
-
-    clearBtn.addEventListener('click', () => {
-      output.innerHTML = '';
-    });
+  })();
   </script>
 </body>
 </html>
