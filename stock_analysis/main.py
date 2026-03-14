@@ -44,10 +44,37 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Stock analysis + real-time news fusion"
     )
+    # Indian NSE stocks under ₹500 (append .NS for yfinance NSE tickers)
+    INDIAN_STOCKS_UNDER_500 = [
+        "IDEA.NS",     # Vi (Vodafone Idea)
+        "YESBANK.NS",  # Yes Bank
+        "SUZLON.NS",   # Suzlon Energy
+        "IRFC.NS",     # Indian Railway Finance Corp
+        "NHPC.NS",     # NHPC Ltd
+        "RVNL.NS",     # Rail Vikas Nigam
+        "SJVN.NS",     # SJVN Ltd
+        "PNB.NS",      # Punjab National Bank
+        "BANKBARODA.NS",# Bank of Baroda
+        "CANBK.NS",    # Canara Bank
+        "COALINDIA.NS",# Coal India
+        "SAIL.NS",     # Steel Authority of India
+        "BHEL.NS",     # Bharat Heavy Electricals
+        "RECLTD.NS",   # REC Ltd
+        "HUDCO.NS",    # HUDCO
+        "IREDA.NS",    # IREDA
+        "NBCC.NS",     # NBCC India
+        "MRPL.NS",     # Mangalore Refinery
+        "NATIONALUM.NS",# National Aluminium
+        "GMRINFRA.NS", # GMR Airports
+    ]
     p.add_argument(
         "--tickers", nargs="+",
-        default=["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META"],
-        help="Ticker symbols to watch"
+        default=INDIAN_STOCKS_UNDER_500,
+        help="Ticker symbols to watch (use .NS suffix for NSE stocks)"
+    )
+    p.add_argument(
+        "--max-price", type=float, default=500.0,
+        help="Only show stocks at or below this price in INR (default: 500)"
     )
     p.add_argument(
         "--mode", choices=["static", "live"], default="static",
@@ -107,26 +134,32 @@ def _print_banner(tickers: list):
 
 def run_static(args):
     _print_banner(args.tickers)
-    print(f"\n{Fore.WHITE}Fetching & analysing {len(args.tickers)} tickers ...{Style.RESET_ALL}\n")
+    max_price = getattr(args, "max_price", 500.0)
+    print(f"\n{Fore.WHITE}Fetching & analysing {len(args.tickers)} tickers "
+          f"(max price ₹{max_price:.0f}) ...{Style.RESET_ALL}\n")
 
     engine  = StockEngine(period=args.period, interval=args.interval)
     fusion  = SentimentFusion(use_finbert=args.finbert)
     signals = engine.analyse_many(args.tickers)
 
+    # filter by max price
+    signals = [s for s in signals if s.last_price <= max_price]
+
     if not signals:
-        print(Fore.RED + "No signals returned. Check ticker symbols." + Style.RESET_ALL)
+        print(Fore.RED + f"No stocks found under ₹{max_price:.0f}. "
+              "Try --max-price 1000 or add more tickers." + Style.RESET_ALL)
         return
 
     for tech in signals:
         fused = fusion.fuse(tech, tech.ticker)
         _print_fused(fused)
 
-    print(f"\n{Fore.CYAN}Ranked by score (best to worst):{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}Ranked by score (best to worst) — under ₹{max_price:.0f}:{Style.RESET_ALL}")
     for i, tech in enumerate(signals, 1):
         arrow = {"BUY": "▲", "HOLD": "●", "SELL": "▼"}.get(tech.signal, "?")
         col   = SIGNAL_COLOR.get(tech.signal, "")
-        print(f"  {i:2}. {col}{tech.ticker:<6}{Style.RESET_ALL}"
-              f"  ${tech.last_price:>10.2f}  {col}{arrow} {tech.signal:<4}{Style.RESET_ALL}"
+        print(f"  {i:2}. {col}{tech.ticker:<15}{Style.RESET_ALL}"
+              f"  ₹{tech.last_price:>8.2f}  {col}{arrow} {tech.signal:<4}{Style.RESET_ALL}"
               f"  score={tech.score:+.3f}  conf={tech.confidence:.1f}%")
 
 
