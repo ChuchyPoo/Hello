@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stock Analysis{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Stock Analysis</div>
+        <div class="nav-links">
+            <a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/trading" class="nav-link {% if active == 'trading' %}active{% endif %}">Trading</a>
+        </div>
+        <div class="nav-status">
+            <span id="connection-status" class="status-dot offline"></span>
+            <span id="status-text">Connecting...</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // SSE connection for real-time updates
+        const sse = new EventSource('/api/stream');
+        const statusDot = document.getElementById('connection-status');
+        const statusText = document.getElementById('status-text');
+
+        sse.onopen = () => {
+            statusDot.className = 'status-dot online';
+            statusText.textContent = 'Live';
+        };
+        sse.onerror = () => {
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = 'Reconnecting...';
+        };
+        sse.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (window.handleSSE) window.handleSSE(data);
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

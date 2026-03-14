@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ ticker }} - Stock Analysis{% endblock %}
+
+{% block content %}
+<div class="stock-detail" id="stock-detail" data-ticker="{{ ticker }}">
+    <div class="detail-header">
+        <a href="/" class="back-link">&larr; Back to Dashboard</a>
+        <h1 id="detail-title">{{ ticker }}</h1>
+        <div id="detail-signal" class="signal-badge">Loading...</div>
+    </div>
+
+    <div class="detail-grid">
+        <!-- Price Chart -->
+        <div class="card chart-card">
+            <h3>Price History</h3>
+            <canvas id="price-chart"></canvas>
+        </div>
+
+        <!-- Indicator Charts -->
+        <div class="card chart-card">
+            <h3>RSI (14)</h3>
+            <canvas id="rsi-chart"></canvas>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="card metrics-card">
+            <h3>Key Metrics</h3>
+            <div id="metrics-grid" class="metrics-grid"></div>
+        </div>
+
+        <!-- Sub-scores breakdown -->
+        <div class="card">
+            <h3>Signal Breakdown</h3>
+            <canvas id="subscore-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Reasoning -->
+    <div class="card reasoning-card">
+        <h3>Decision Reasoning</h3>
+        <div id="reasoning-list" class="reasoning-list"></div>
+    </div>
+
+    <!-- Historical Matches -->
+    <div class="card history-card">
+        <h3>Historical Pattern Matches</h3>
+        <p class="subtitle">Past situations with similar indicator conditions and what happened next</p>
+        <div id="history-summary" class="history-summary"></div>
+        <table class="match-table" id="match-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Similarity</th>
+                    <th>RSI</th>
+                    <th>1-Day</th>
+                    <th>5-Day</th>
+                    <th>10-Day</th>
+                    <th>20-Day</th>
+                </tr>
+            </thead>
+            <tbody id="match-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Trade Actions -->
+    <div class="card trade-card">
+        <h3>Trade</h3>
+        <div class="trade-actions">
+            <button class="btn btn-buy" onclick="placeTrade('BUY')">BUY</button>
+            <button class="btn btn-sell" onclick="placeTrade('SELL')">SELL</button>
+            <span class="trade-note">(Paper trading mode)</span>
+        </div>
+        <div id="trade-result" class="trade-result"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/stock_detail.js"></script>
+{% endblock %}

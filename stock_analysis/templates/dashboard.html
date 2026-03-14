@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Stock Analysis{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Controls -->
+    <div class="controls-bar">
+        <div class="control-group">
+            <label>Sector</label>
+            <select id="sector-filter">
+                <option value="all">All Sectors</option>
+                {% for s in sectors %}
+                <option value="{{ s }}">{{ s|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Max Price (INR)</label>
+            <input type="number" id="max-price" value="1000" min="1" step="50">
+        </div>
+        <div class="control-group">
+            <button id="scan-btn" class="btn btn-primary" onclick="runScan()">Scan Stocks</button>
+            <button id="scan-all-btn" class="btn btn-secondary" onclick="runScanAll()">Scan All NSE</button>
+        </div>
+        <div class="control-group" id="scan-status" style="display:none">
+            <div class="spinner"></div>
+            <span id="scan-text">Scanning...</span>
+        </div>
+    </div>
+
+    <!-- Thresholds info -->
+    <div class="thresholds-bar" id="thresholds-bar">
+        <span class="threshold-item buy">BUY: score &gt; +0.25</span>
+        <span class="threshold-item hold">HOLD: -0.25 to +0.25</span>
+        <span class="threshold-item sell">SELL: score &lt; -0.25</span>
+        <span class="threshold-sep">|</span>
+        <span class="threshold-item">RSI: &lt;30 oversold, &gt;70 overbought</span>
+        <span class="threshold-sep">|</span>
+        <span class="threshold-item">Confidence = |score| x 100%</span>
+    </div>
+
+    <!-- Results table -->
+    <div class="results-section">
+        <table class="stock-table" id="stock-table">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Ticker</th>
+                    <th onclick="sortTable(1)">Name</th>
+                    <th onclick="sortTable(2)">Price</th>
+                    <th onclick="sortTable(3)">Signal</th>
+                    <th onclick="sortTable(4)">Confidence</th>
+                    <th onclick="sortTable(5)">Score</th>
+                    <th onclick="sortTable(6)">RSI</th>
+                    <th onclick="sortTable(7)">MACD</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody id="stock-tbody">
+                <tr><td colspan="9" class="empty-msg">Click "Scan Stocks" to begin analysis</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

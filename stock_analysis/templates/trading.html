@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Trading - Stock Analysis{% endblock %}
+
+{% block content %}
+<div class="trading-page">
+    <h1>Trading Dashboard</h1>
+
+    <!-- Portfolio Summary -->
+    <div class="portfolio-summary" id="portfolio-summary">
+        <div class="summary-card">
+            <div class="summary-label">Balance</div>
+            <div class="summary-value" id="balance">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Invested</div>
+            <div class="summary-value" id="invested">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Current Value</div>
+            <div class="summary-value" id="current-value">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Total P&L</div>
+            <div class="summary-value" id="total-pnl">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Open Positions</div>
+            <div class="summary-value" id="open-count">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Mode</div>
+            <div class="summary-value mode-paper" id="trade-mode">PAPER</div>
+        </div>
+    </div>
+
+    <!-- Open Positions -->
+    <div class="card">
+        <h3>Open Positions</h3>
+        <table class="position-table">
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Qty</th>
+                    <th>Entry</th>
+                    <th>Current</th>
+                    <th>P&L</th>
+                    <th>P&L %</th>
+                    <th>Stop Loss</th>
+                    <th>Take Profit</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="positions-tbody">
+                <tr><td colspan="9" class="empty-msg">No open positions</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Trade Journal -->
+    <div class="card">
+        <h3>Trade Journal</h3>
+        <table class="journal-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Ticker</th>
+                    <th>Action</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody id="journal-tbody">
+                <tr><td colspan="7" class="empty-msg">No trades yet</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/trading.js"></script>
+{% endblock %}
