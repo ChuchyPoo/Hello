@@ -10,6 +10,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
+from datetime import date as _date
 from typing import Optional
 import warnings
 warnings.filterwarnings("ignore")
@@ -112,6 +113,7 @@ class StockSignal:
     reasoning:     list = field(default_factory=list)
     sub_scores:    dict = field(default_factory=dict)
     price_history: Optional[pd.DataFrame] = field(default=None, repr=False)
+    data_date:     Optional[str] = field(default=None)   # last OHLCV date (YYYY-MM-DD)
 
     def summary(self) -> str:
         arrow = {"BUY": "▲", "HOLD": "●", "SELL": "▼"}.get(self.signal, "?")
@@ -145,17 +147,27 @@ class StockSignal:
                 "close": df["Close"].round(2).tolist(),
                 "volume": df["Volume"].tolist(),
             }
+        data_age_days = None
+        if self.data_date:
+            try:
+                last = _date.fromisoformat(self.data_date)
+                data_age_days = (_date.today() - last).days
+            except ValueError:
+                pass
+
         return {
-            "ticker":       self.ticker,
-            "last_price":   round(self.last_price, 2),
-            "signal":       self.signal,
-            "confidence":   round(self.confidence, 1),
-            "score":        round(self.score, 3),
-            "indicators":   self.indicators,
-            "notes":        self.notes,
-            "reasoning":    self.reasoning,
-            "sub_scores":   {k: round(v, 3) for k, v in self.sub_scores.items()},
-            "price_data":   price_data,
+            "ticker":        self.ticker,
+            "last_price":    round(self.last_price, 2),
+            "signal":        self.signal,
+            "confidence":    round(self.confidence, 1),
+            "score":         round(self.score, 3),
+            "indicators":    self.indicators,
+            "notes":         self.notes,
+            "reasoning":     self.reasoning,
+            "sub_scores":    {k: round(v, 3) for k, v in self.sub_scores.items()},
+            "price_data":    price_data,
+            "data_date":     self.data_date,
+            "data_age_days": data_age_days,
         }
 
 
@@ -447,12 +459,15 @@ class StockEngine:
         if p > e200: notes.append("Price above 200-EMA")
         if p < e200: notes.append("Price below 200-EMA")
 
+        last_data_date = df.index[-1].strftime("%Y-%m-%d") if hasattr(df.index[-1], "strftime") else str(df.index[-1])[:10]
+
         return StockSignal(
             ticker=ticker,
             last_price=p,
             signal=signal,
             confidence=confidence,
             score=composite,
+            data_date=last_data_date,
             indicators={
                 "rsi": round(r, 2),
                 "macd_hist": round(mh, 4),

@@ -235,3 +235,51 @@ tr.signal-hold td { border-left: 3px solid var(--yellow); }
 
 /* ── Clickable rows ───────────────────────────────────────────────────────── */
 .clickable { cursor: pointer; }
+
+/* ── Search bar ───────────────────────────────────────────────────────────── */
+.search-group { flex-direction: row !important; align-items: flex-end !important; gap: 8px !important; }
+.search-group label { align-self: flex-start; }
+.search-wrap { position: relative; display: flex; flex-direction: column; }
+#stock-search {
+    background: var(--bg-primary); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font-size: 14px; outline: none;
+    width: 240px;
+}
+#stock-search:focus { border-color: var(--blue); }
+.search-dropdown {
+    display: none;
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 6px; z-index: 200; margin-top: 4px;
+    box-shadow: var(--shadow); max-height: 300px; overflow-y: auto;
+}
+.suggestion-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer; font-size: 13px;
+    border-bottom: 1px solid var(--border);
+}
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover, .suggestion-item.active { background: var(--bg-hover); }
+.sug-ticker { font-weight: 700; color: var(--text-primary); min-width: 80px; }
+.sug-name   { color: var(--text-secondary); flex: 1; }
+.sug-sector { font-size: 11px; color: var(--text-muted); text-transform: capitalize; }
+
+/* ── Freshness banner ─────────────────────────────────────────────────────── */
+.freshness-banner {
+    padding: 10px 16px; border-radius: var(--radius);
+    margin-bottom: 12px; font-size: 13px; border: 1px solid;
+}
+.freshness-ok    { background: var(--green-bg);  color: var(--green);  border-color: var(--green); }
+.freshness-warn  { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow); }
+.freshness-stale { background: var(--red-bg);    color: var(--red);    border-color: var(--red); }
+
+/* ── Freshness cell badges ────────────────────────────────────────────────── */
+.fresh-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.fresh-ok      { background: var(--green-bg);  color: var(--green); }
+.fresh-warn    { background: var(--yellow-bg); color: var(--yellow); }
+.fresh-stale   { background: var(--red-bg);    color: var(--red); }
+.fresh-unknown { background: var(--bg-hover);  color: var(--text-muted); }

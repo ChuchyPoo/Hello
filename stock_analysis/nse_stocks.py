@@ -14,6 +14,7 @@ NSE_STOCKS = {
         {"ticker": "APOLLOTYRE.NS", "name": "Apollo Tyres"},
         {"ticker": "ETERNAL.NS",    "name": "Eternal (Zomato)"},
         {"ticker": "HINDCOPPER.NS", "name": "Hindustan Copper"},
+        {"ticker": "NATIONALUM.NS", "name": "National Aluminium Company"},
     ],
     "banks": [
         {"ticker": "SBIN.NS",       "name": "State Bank of India"},

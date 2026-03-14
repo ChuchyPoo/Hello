@@ -183,6 +183,39 @@ def api_thresholds():
     return jsonify(THRESHOLDS)
 
 
+@app.route("/api/freshness", methods=["POST"])
+def api_freshness():
+    """Check data freshness for a list of tickers (or defaults to priority stocks).
+    Returns data_date and data_age_days for each ticker.
+    """
+    from datetime import date
+    data = request.get_json(force=True) or {}
+    tickers = data.get("tickers") or [s["ticker"] for s in NSE_STOCKS.get("priority", [])]
+
+    results = []
+    def check_one(t):
+        sig = engine.analyse(t)
+        if sig:
+            return {"ticker": t, "data_date": sig.data_date, "data_age_days": sig.to_dict()["data_age_days"]}
+        return {"ticker": t, "data_date": None, "data_age_days": None}
+
+    futures = {executor.submit(check_one, t): t for t in tickers}
+    for future in futures:
+        try:
+            results.append(future.result(timeout=30))
+        except Exception:
+            pass
+
+    today = date.today().isoformat()
+    stale = [r for r in results if r["data_age_days"] is not None and r["data_age_days"] > 3]
+    return jsonify({
+        "checked_at": today,
+        "results": results,
+        "stale_count": len(stale),
+        "stale_tickers": [r["ticker"] for r in stale],
+    })
+
+
 @app.route("/api/stream")
 def api_stream():
     def generate():
