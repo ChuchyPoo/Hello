@@ -20,7 +20,8 @@ from pathlib import Path
 from stock_engine import StockSignal
 
 
-JOURNAL_FILE = Path(__file__).parent / "trade_journal.json"
+JOURNAL_FILE   = Path(__file__).parent / "trade_journal.json"
+PORTFOLIO_FILE = Path(__file__).parent / "paper_portfolio.json"
 
 
 # ── data models ───────────────────────────────────────────────────────────────
@@ -160,6 +161,7 @@ class PaperBroker(BrokerBase):
         self._order_counter = 0
         self._trade_log: list[dict] = []
         self._load_journal()
+        self._load_portfolio()
 
     def connect(self) -> bool:
         print("[PaperBroker] Connected (simulated)")
@@ -209,6 +211,7 @@ class PaperBroker(BrokerBase):
                 order.reason = f"No open position for {order.ticker}"
 
         self._log(order)
+        self._save_portfolio()
         return order_id
 
     def cancel_order(self, order_id: str) -> bool:
@@ -239,6 +242,33 @@ class PaperBroker(BrokerBase):
                     self._trade_log = json.load(f)
         except Exception:
             self._trade_log = []
+
+    def _save_portfolio(self):
+        """Persist positions, balance, and order counter to disk."""
+        try:
+            state = {
+                "balance": self.balance,
+                "order_counter": self._order_counter,
+                "positions": [asdict(p) for p in self.positions],
+            }
+            with open(PORTFOLIO_FILE, "w") as f:
+                json.dump(state, f, indent=2, default=str)
+        except Exception:
+            pass
+
+    def _load_portfolio(self):
+        """Restore positions, balance, and order counter from disk."""
+        try:
+            if PORTFOLIO_FILE.exists():
+                with open(PORTFOLIO_FILE) as f:
+                    state = json.load(f)
+                self.balance = state.get("balance", self.initial_capital)
+                self._order_counter = state.get("order_counter", 0)
+                self.positions = [
+                    Position(**p) for p in state.get("positions", [])
+                ]
+        except Exception:
+            pass
 
 
 class ZerodhaBroker(BrokerBase):
