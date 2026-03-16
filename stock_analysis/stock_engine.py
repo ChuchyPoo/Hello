@@ -15,6 +15,8 @@ from typing import Optional
 import warnings
 warnings.filterwarnings("ignore")
 
+from google_finance import fetch_with_fallback, fetch_google_finance_details
+
 
 # ── helpers (importable by historical.py) ─────────────────────────────────────
 
@@ -114,6 +116,7 @@ class StockSignal:
     sub_scores:    dict = field(default_factory=dict)
     price_history: Optional[pd.DataFrame] = field(default=None, repr=False)
     data_date:     Optional[str] = field(default=None)   # last OHLCV date (YYYY-MM-DD)
+    google_data:   Optional[dict] = field(default=None, repr=False)  # extra Google Finance data
 
     def summary(self) -> str:
         arrow = {"BUY": "▲", "HOLD": "●", "SELL": "▼"}.get(self.signal, "?")
@@ -155,6 +158,18 @@ class StockSignal:
             except ValueError:
                 pass
 
+        # Google Finance extra data
+        gd = {}
+        if self.google_data:
+            for key in ('pe_ratio', 'dividend_yield', 'market_cap_str',
+                        'year_high', 'year_low', 'prev_close', 'change',
+                        'change_pct', 'description', 'name', 'volume_str'):
+                if key in self.google_data:
+                    gd[key] = self.google_data[key]
+            gd['data_source'] = 'google_finance + yahoo'
+        else:
+            gd['data_source'] = 'yahoo'
+
         return {
             "ticker":        self.ticker,
             "last_price":    round(self.last_price, 2),
@@ -168,6 +183,7 @@ class StockSignal:
             "price_data":    price_data,
             "data_date":     self.data_date,
             "data_age_days": data_age_days,
+            "fundamentals":  gd,
         }
 
 
@@ -181,10 +197,12 @@ class StockEngine:
         self.interval = interval
 
     def analyse(self, ticker: str) -> Optional[StockSignal]:
-        df = self._fetch(ticker)
+        df, google_data = self._fetch(ticker)
         if df is None or len(df) < 30:
             return None
-        return self._compute_signal(ticker, df)
+        sig = self._compute_signal(ticker, df)
+        sig.google_data = google_data
+        return sig
 
     def analyse_many(self, tickers: list[str]) -> list[StockSignal]:
         results = []
@@ -195,19 +213,30 @@ class StockEngine:
         results.sort(key=lambda s: s.score, reverse=True)
         return results
 
-    def _fetch(self, ticker: str) -> Optional[pd.DataFrame]:
+    def _fetch(self, ticker: str) -> tuple[Optional[pd.DataFrame], Optional[dict]]:
+        """Fetch data using Google Finance + Yahoo Finance fallback.
+
+        Returns (dataframe, google_extra_data).
+        """
         try:
-            df = yf.download(ticker, period=self.period,
-                             interval=self.interval, progress=False,
-                             auto_adjust=True)
-            if df.empty:
-                return None
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            return df
+            df, google_data = fetch_with_fallback(
+                ticker, period=self.period, interval=self.interval
+            )
+            return df, google_data
         except Exception as e:
             print(f"  [fetch error] {ticker}: {e}")
-            return None
+            # Pure Yahoo fallback if fetch_with_fallback itself fails
+            try:
+                df = yf.download(ticker, period=self.period,
+                                 interval=self.interval, progress=False,
+                                 auto_adjust=True)
+                if df.empty:
+                    return None, None
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
+                return df, None
+            except Exception:
+                return None, None
 
     def _compute_signal(self, ticker: str, df: pd.DataFrame) -> StockSignal:
         close  = df["Close"]

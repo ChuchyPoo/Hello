@@ -20,6 +20,7 @@ from nse_stocks import (
     NSE_STOCKS, SECTOR_LIST, get_all_tickers, get_by_sector,
     get_by_sectors, search_tickers, get_stock_info
 )
+from google_finance import fetch_google_finance_details, search_google_finance
 
 app = Flask(__name__)
 
@@ -130,7 +131,18 @@ def api_stock(ticker: str):
 def api_stocks():
     q = request.args.get("q", "")
     if q:
-        return jsonify({"results": search_tickers(q)})
+        # Search local NSE database first
+        local_results = search_tickers(q)
+        if local_results:
+            return jsonify({"results": local_results})
+        # Fallback: try Google Finance search
+        google_results = search_google_finance(q)
+        if google_results:
+            return jsonify({"results": google_results, "source": "google"})
+        # Last resort: let user try directly with .NS suffix
+        return jsonify({"results": [
+            {"ticker": f"{q.upper()}.NS", "name": f"{q.upper()} (try direct)", "sector": "unknown"}
+        ], "source": "guess"})
     return jsonify({"sectors": NSE_STOCKS, "sector_list": SECTOR_LIST})
 
 
@@ -139,6 +151,7 @@ def api_trade():
     data = request.get_json(force=True)
     ticker = data.get("ticker", "")
     action = data.get("action", "BUY")
+    amount = data.get("amount", 0)  # user-specified INR amount
 
     if not ticker:
         return jsonify({"error": "No ticker specified"}), 400
@@ -148,17 +161,37 @@ def api_trade():
     if not sig:
         return jsonify({"error": f"Could not fetch data for {ticker}"}), 404
 
-    quantity, stop_loss, take_profit = sizer.calculate(sig)
+    price = sig.last_price
+
+    if amount and amount > 0 and action == "BUY":
+        # User specified an amount — calculate quantity from it
+        quantity = max(1, int(amount / price))
+        actual_cost = quantity * price
+        atr = sig.indicators.get("atr", price * 0.02)
+        stop_loss = round(price - 2 * atr, 2)
+        take_profit = round(price + 3 * atr, 2)
+    elif action == "SELL":
+        # For SELL, sell all shares of this position
+        positions = broker.get_positions()
+        pos = next((p for p in positions if p.ticker == ticker), None)
+        if not pos:
+            return jsonify({"error": f"No open position for {ticker}"}), 400
+        quantity = pos.quantity
+        stop_loss = 0
+        take_profit = 0
+    else:
+        # Fallback to position sizer
+        quantity, stop_loss, take_profit = sizer.calculate(sig)
 
     order = TradeOrder(
         ticker=ticker,
         action=action,
         quantity=quantity,
-        price=sig.last_price,
+        price=price,
         stop_loss=stop_loss if action == "BUY" else 0,
         take_profit=take_profit if action == "BUY" else 0,
         paper=True,
-        reason=f"Manual {action} from web UI",
+        reason=f"Manual {action} ₹{amount:,.0f}" if amount else f"Manual {action} from web UI",
     )
     broker.place_order(order)
     sse_publish({"type": "trade_update", "order": order.to_dict()})
@@ -167,9 +200,20 @@ def api_trade():
 
 @app.route("/api/positions")
 def api_positions():
-    positions = [p.to_dict() for p in broker.get_positions()]
+    # Update current prices for all open positions
+    positions = broker.get_positions()
+    for pos in positions:
+        try:
+            sig = engine.analyse(pos.ticker)
+            if sig:
+                pos.current_price = sig.last_price
+        except Exception:
+            pass
+    broker._save_portfolio()
+
+    positions_data = [p.to_dict() for p in positions]
     summary = trader.get_portfolio_summary()
-    return jsonify({"positions": positions, "summary": summary})
+    return jsonify({"positions": positions_data, "summary": summary})
 
 
 @app.route("/api/journal")
@@ -181,6 +225,27 @@ def api_journal():
 @app.route("/api/thresholds")
 def api_thresholds():
     return jsonify(THRESHOLDS)
+
+
+@app.route("/api/google/<path:ticker>")
+def api_google_data(ticker: str):
+    """Get enriched data from Google Finance for a ticker."""
+    data = fetch_google_finance_details(ticker)
+    if not data:
+        return jsonify({"error": f"No Google Finance data for {ticker}"}), 404
+    return jsonify(data)
+
+
+@app.route("/api/portfolio/reset", methods=["POST"])
+def api_portfolio_reset():
+    """Reset paper portfolio to starting capital."""
+    broker.balance = broker.initial_capital
+    broker.positions.clear()
+    broker._trade_log.clear()
+    broker._order_counter = 0
+    broker._save_portfolio()
+    broker._save_journal()
+    return jsonify({"status": "reset", "balance": broker.balance})
 
 
 @app.route("/api/freshness", methods=["POST"])
@@ -244,8 +309,11 @@ def api_stream():
 # ── entry ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     print("=" * 50)
     print(" Stock Analysis Web Dashboard")
-    print(" Open http://localhost:5000 in your browser")
+    print(f" Open http://localhost:{port} in your browser")
     print("=" * 50)
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=port, debug=debug, threaded=True)

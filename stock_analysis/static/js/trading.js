@@ -94,6 +94,16 @@ async function sellPosition(ticker) {
     }
 }
 
+async function resetPortfolio() {
+    if (!confirm('Reset paper portfolio to ₹1,00,000? This will clear all positions and trades.')) return;
+    try {
+        await fetch('/api/portfolio/reset', {method: 'POST'});
+        loadPortfolio();
+    } catch (e) {
+        console.error('Reset failed:', e);
+    }
+}
+
 // SSE handler
 window.handleSSE = function(data) {
     if (data.type === 'trade_update') {

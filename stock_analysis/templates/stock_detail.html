@@ -62,13 +62,33 @@
         </table>
     </div>
 
+    <!-- Fundamentals from Google Finance -->
+    <div class="card fundamentals-card">
+        <h3>Fundamentals <span class="data-source-badge" id="data-source"></span></h3>
+        <div id="fundamentals-grid" class="metrics-grid"></div>
+    </div>
+
     <!-- Trade Actions -->
     <div class="card trade-card">
-        <h3>Trade</h3>
-        <div class="trade-actions">
-            <button class="btn btn-buy" onclick="placeTrade('BUY')">BUY</button>
-            <button class="btn btn-sell" onclick="placeTrade('SELL')">SELL</button>
-            <span class="trade-note">(Paper trading mode)</span>
+        <h3>Paper Trade</h3>
+        <div class="trade-form">
+            <div class="trade-amount-group">
+                <label>Amount (INR)</label>
+                <input type="number" id="trade-amount" value="5000" min="100" step="500" placeholder="e.g. 5000">
+                <div class="quick-amounts">
+                    <button class="btn btn-sm btn-secondary" onclick="setAmount(1000)">1K</button>
+                    <button class="btn btn-sm btn-secondary" onclick="setAmount(5000)">5K</button>
+                    <button class="btn btn-sm btn-secondary" onclick="setAmount(10000)">10K</button>
+                    <button class="btn btn-sm btn-secondary" onclick="setAmount(25000)">25K</button>
+                    <button class="btn btn-sm btn-secondary" onclick="setAmount(50000)">50K</button>
+                </div>
+            </div>
+            <div class="trade-info" id="trade-info"></div>
+            <div class="trade-actions">
+                <button class="btn btn-buy" onclick="placeTrade('BUY')">BUY</button>
+                <button class="btn btn-sell" onclick="placeTrade('SELL')">SELL</button>
+                <span class="trade-note">(Paper trading mode - not real money)</span>
+            </div>
         </div>
         <div id="trade-result" class="trade-result"></div>
     </div>

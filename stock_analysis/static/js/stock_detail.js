@@ -1,6 +1,7 @@
 // Stock detail page logic
 
 const ticker = document.getElementById('stock-detail').dataset.ticker;
+let currentPrice = 0;
 
 async function loadStockDetail() {
     try {
@@ -19,6 +20,7 @@ async function loadStockDetail() {
 function renderDetail(data) {
     const s = data.signal;
     const sigClass = `signal-${s.signal.toLowerCase()}`;
+    currentPrice = s.last_price;
 
     // Header
     document.getElementById('detail-title').textContent =
@@ -50,6 +52,9 @@ function renderDetail(data) {
         </div>`
     ).join('');
 
+    // Fundamentals from Google Finance
+    renderFundamentals(s.fundamentals || {});
+
     // Reasoning
     const reasonEl = document.getElementById('reasoning-list');
     reasonEl.innerHTML = (s.reasoning || []).map(r => {
@@ -67,7 +72,77 @@ function renderDetail(data) {
     if (s.price_data) renderPriceChart(s.price_data);
     if (s.indicators) renderRSIChart(s.price_data, s.indicators);
     renderSubScoreChart(s.sub_scores);
+
+    // Update trade info
+    updateTradeInfo();
 }
+
+function renderFundamentals(fund) {
+    const grid = document.getElementById('fundamentals-grid');
+    const srcBadge = document.getElementById('data-source');
+
+    if (fund.data_source) {
+        srcBadge.textContent = fund.data_source;
+        srcBadge.style.display = 'inline';
+    }
+
+    const items = [];
+    if (fund.pe_ratio) items.push(['P/E Ratio', fund.pe_ratio.toFixed(1)]);
+    if (fund.dividend_yield) items.push(['Dividend Yield', `${fund.dividend_yield}%`]);
+    if (fund.market_cap_str) items.push(['Market Cap', fund.market_cap_str]);
+    if (fund.year_high) items.push(['52W High', `₹${fund.year_high.toLocaleString()}`]);
+    if (fund.year_low) items.push(['52W Low', `₹${fund.year_low.toLocaleString()}`]);
+    if (fund.prev_close) items.push(['Prev Close', `₹${fund.prev_close.toFixed(2)}`]);
+    if (fund.change != null) {
+        const cls = fund.change >= 0 ? 'ret-positive' : 'ret-negative';
+        const sign = fund.change >= 0 ? '+' : '';
+        items.push(['Day Change', `<span class="${cls}">${sign}₹${fund.change.toFixed(2)} (${sign}${fund.change_pct.toFixed(2)}%)</span>`]);
+    }
+    if (fund.volume_str) items.push(['Volume', fund.volume_str]);
+
+    if (items.length === 0) {
+        grid.innerHTML = '<div class="metric-item"><span class="metric-label">No fundamental data available</span></div>';
+        return;
+    }
+
+    grid.innerHTML = items.map(([label, val]) =>
+        `<div class="metric-item">
+            <span class="metric-label">${label}</span>
+            <span class="metric-value">${val}</span>
+        </div>`
+    ).join('');
+
+    // Show description if available
+    if (fund.description) {
+        grid.innerHTML += `<div class="metric-item" style="grid-column: 1/-1">
+            <span class="metric-label">About</span>
+            <span class="metric-value" style="font-size:12px;font-weight:400;color:var(--text-secondary)">${fund.description}</span>
+        </div>`;
+    }
+}
+
+function setAmount(amt) {
+    document.getElementById('trade-amount').value = amt;
+    updateTradeInfo();
+}
+
+function updateTradeInfo() {
+    const amount = parseFloat(document.getElementById('trade-amount').value) || 0;
+    const infoEl = document.getElementById('trade-info');
+    if (currentPrice > 0 && amount > 0) {
+        const qty = Math.floor(amount / currentPrice);
+        const actualCost = qty * currentPrice;
+        infoEl.innerHTML = `
+            <span>₹${amount.toLocaleString()} ÷ ₹${currentPrice.toFixed(2)} = <strong>${qty} shares</strong></span>
+            <span>Actual cost: <strong>₹${actualCost.toLocaleString(undefined, {maximumFractionDigits:2})}</strong></span>
+        `;
+    } else {
+        infoEl.innerHTML = '';
+    }
+}
+
+// Update trade info when amount changes
+document.getElementById('trade-amount').addEventListener('input', updateTradeInfo);
 
 function renderHistorical(hist) {
     const summaryEl = document.getElementById('history-summary');
@@ -130,7 +205,6 @@ function renderPriceChart(priceData) {
 }
 
 function renderRSIChart(priceData, indicators) {
-    // We only have the current RSI value, so show a gauge-like bar
     const ctx = document.getElementById('rsi-chart');
     const rsi = indicators.rsi;
     new Chart(ctx, {
@@ -187,16 +261,18 @@ function renderSubScoreChart(subScores) {
 }
 
 async function placeTrade(action) {
+    const amount = parseFloat(document.getElementById('trade-amount').value) || 0;
     try {
         const resp = await fetch('/api/trade', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ticker, action})
+            body: JSON.stringify({ticker, action, amount})
         });
         const data = await resp.json();
         const resultEl = document.getElementById('trade-result');
         if (data.order && data.order.status === 'EXECUTED') {
-            resultEl.innerHTML = `<span style="color:var(--green)">Order ${data.order.status}: ${action} ${data.order.quantity} shares at ₹${data.order.price.toFixed(2)}</span>`;
+            const cost = data.order.quantity * data.order.price;
+            resultEl.innerHTML = `<span style="color:var(--green)">Order ${data.order.status}: ${action} ${data.order.quantity} shares at ₹${data.order.price.toFixed(2)} (Total: ₹${cost.toLocaleString(undefined, {maximumFractionDigits:2})})</span>`;
         } else {
             resultEl.innerHTML = `<span style="color:var(--red)">${data.error || data.order?.reason || 'Trade failed'}</span>`;
         }
