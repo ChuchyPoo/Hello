@@ -4,6 +4,71 @@ let stockData = [];
 let searchSuggestions = [];
 let activeSuggestion = -1;
 let searchDebounce = null;
+let currentMarket = 'nse_india';
+let marketsData = {};
+
+// ── Market switching ────────────────────────────────────────────────────────
+
+async function loadMarkets() {
+    try {
+        const resp = await fetch('/api/markets');
+        const data = await resp.json();
+        marketsData = data.markets || {};
+    } catch (e) {
+        console.error('Failed to load markets:', e);
+    }
+}
+
+function onMarketChange() {
+    currentMarket = document.getElementById('market-filter').value;
+    const market = marketsData[currentMarket] || {};
+
+    // Update search placeholder
+    const placeholder = market.placeholder || 'Search stocks...';
+    document.getElementById('stock-search').value = '';
+    document.getElementById('stock-search').placeholder = placeholder;
+    document.getElementById('search-label').textContent =
+        `Search ${market.flag || ''} ${market.name || 'Stock'}`;
+
+    // Show/hide NSE-specific controls
+    const isNSE = currentMarket === 'nse_india';
+    document.getElementById('sector-group').style.display = isNSE ? '' : 'none';
+    document.getElementById('scan-all-btn').style.display = isNSE ? '' : 'none';
+
+    // Update max price label currency
+    const currency = market.currency || '₹';
+    document.querySelector('label[for="max-price"]') // doesn't exist but harmless
+    document.querySelector('.control-group:has(#max-price) label').textContent =
+        `Max Price (${currency})`;
+
+    // Show popular stocks bar for international markets
+    showPopularBar(currentMarket);
+
+    // Clear results
+    document.getElementById('stock-tbody').innerHTML =
+        '<tr><td colspan="10" class="empty-msg">Select a stock or click Scan</td></tr>';
+}
+
+function showPopularBar(marketId) {
+    const bar = document.getElementById('popular-stocks-bar');
+    if (marketId === 'nse_india') {
+        bar.style.display = 'none';
+        return;
+    }
+    const market = marketsData[marketId];
+    if (!market || !market.popular) { bar.style.display = 'none'; return; }
+
+    bar.innerHTML = `
+        <span class="popular-label">Popular ${market.flag} ${market.name}:</span>
+        ${market.popular.map(s =>
+            `<button class="btn btn-sm btn-secondary popular-stock-btn"
+                     onclick="window.location='/stock/${encodeURIComponent(s.ticker)}'"
+                     title="${s.name}">${s.ticker.replace(/\.(NS|L|DE|T|HK|AX|SI)$/, '')}</button>`
+        ).join('')}`;
+    bar.style.display = 'flex';
+}
+
+// ── Scan ────────────────────────────────────────────────────────────────────
 
 async function runScan() {
     const sector = document.getElementById('sector-filter').value;
@@ -62,7 +127,7 @@ async function runScanAll() {
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
+// ── Search ──────────────────────────────────────────────────────────────────
 
 function onSearchInput() {
     clearTimeout(searchDebounce);
@@ -73,7 +138,8 @@ function onSearchInput() {
 
 async function fetchSuggestions(q) {
     try {
-        const resp = await fetch(`/api/stocks?q=${encodeURIComponent(q)}`);
+        const url = `/api/market/search?q=${encodeURIComponent(q)}&market=${currentMarket}`;
+        const resp = await fetch(url);
         const data = await resp.json();
         searchSuggestions = data.results || [];
         activeSuggestion = -1;
@@ -86,15 +152,17 @@ async function fetchSuggestions(q) {
 function renderDropdown() {
     const dd = document.getElementById('search-dropdown');
     if (!searchSuggestions.length) { hideDropdown(); return; }
-    dd.innerHTML = searchSuggestions.slice(0, 8).map((s, i) =>
-        `<div class="suggestion-item" data-i="${i}" data-ticker="${s.ticker}"
+    dd.innerHTML = searchSuggestions.slice(0, 8).map((s, i) => {
+        // Strip common suffixes for display
+        const display = (s.ticker || '').replace(/\.(NS|BO|L|DE|T|HK|AX|SI)$/, '');
+        return `<div class="suggestion-item" data-i="${i}" data-ticker="${s.ticker}"
               onmousedown="selectSuggestion(${i})"
               onmouseover="highlightSuggestion(${i})">
-            <span class="sug-ticker">${s.ticker.replace('.NS','')}</span>
-            <span class="sug-name">${s.name}</span>
-            <span class="sug-sector">${s.sector}</span>
-         </div>`
-    ).join('');
+            <span class="sug-ticker">${display}</span>
+            <span class="sug-name">${s.name || ''}</span>
+            <span class="sug-sector">${s.sector || s.exchange || ''}</span>
+         </div>`;
+    }).join('');
     dd.style.display = 'block';
 }
 
@@ -143,20 +211,26 @@ function onSearchKey(e) {
     }
 }
 
-// Hide dropdown when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.search-wrap')) hideDropdown();
 });
 
-async function analyseSearched() {
+function analyseSearched() {
     let ticker = document.getElementById('stock-search').value.trim().toUpperCase();
     if (!ticker) return;
-    // Auto-append .NS if no exchange suffix
-    if (!ticker.includes('.')) ticker = ticker + '.NS';
+
+    // Auto-append suffix based on selected market
+    const market = marketsData[currentMarket] || {};
+    const suffix = market.suffix || '';
+    if (suffix && !ticker.includes('.') && !ticker.includes(':')) {
+        ticker = ticker + suffix;
+    } else if (!ticker.includes('.') && currentMarket === 'nse_india') {
+        ticker = ticker + '.NS';
+    }
     window.location = `/stock/${encodeURIComponent(ticker)}`;
 }
 
-// ── Freshness banner ───────────────────────────────────────────────────────
+// ── Freshness banner ────────────────────────────────────────────────────────
 
 function showFreshnessBanner(data) {
     const banner = document.getElementById('freshness-banner');
@@ -173,19 +247,17 @@ function showFreshnessBanner(data) {
     let msg = `Data freshness: most recent data is ${Math.min(...ages)} day(s) old, avg ${avgAge} days.`;
     if (staleCount > 0) {
         cls = 'freshness-warn';
-        msg = `⚠ Data freshness warning: ${staleCount} stock(s) have data older than 3 days (max ${maxAge} days). This may indicate a market holiday or data source issue.`;
+        msg = `⚠ ${staleCount} stock(s) have data older than 3 days (max ${maxAge} days).`;
     }
     if (maxAge > 7) {
         cls = 'freshness-stale';
-        msg = `⛔ Stale data: ${staleCount} stock(s) have data older than 7 days (max ${maxAge} days). Analysis may be unreliable — check your data source.`;
+        msg = `⛔ ${staleCount} stock(s) have data older than 7 days (max ${maxAge} days). Analysis may be unreliable.`;
     }
 
     banner.className = `freshness-banner ${cls}`;
     banner.textContent = msg;
     banner.style.display = 'block';
 }
-
-// ── Freshness badge helper ─────────────────────────────────────────────────
 
 function freshnessBadge(dataDate, ageDays) {
     if (!dataDate) return '<span class="fresh-badge fresh-unknown">N/A</span>';
@@ -195,7 +267,7 @@ function freshnessBadge(dataDate, ageDays) {
     return `<span class="fresh-badge ${cls}" title="${ageDays} day(s) ago">${dataDate}</span>`;
 }
 
-// ── Render table ───────────────────────────────────────────────────────────
+// ── Render table ────────────────────────────────────────────────────────────
 
 function renderTable(data) {
     const tbody = document.getElementById('stock-tbody');
@@ -208,11 +280,13 @@ function renderTable(data) {
         const badge = `<span class="signal-badge ${sigClass}">${s.signal}</span>`;
         const macdDir = s.indicators.macd_hist > 0 ? '+' : '';
         const dateBadge = freshnessBadge(s.data_date, s.data_age_days);
+        // Display ticker without common suffixes
+        const displayTicker = s.ticker.replace(/\.(NS|BO|L|DE|T|HK|AX|SI)$/, '');
         return `
         <tr class="${sigClass} clickable" onclick="window.location='/stock/${encodeURIComponent(s.ticker)}'">
-            <td><strong>${s.ticker.replace('.NS','')}</strong></td>
+            <td><strong>${displayTicker}</strong></td>
             <td>${s.name || ''}</td>
-            <td>&#8377;${s.last_price.toFixed(2)}</td>
+            <td>${s.last_price.toFixed(2)}</td>
             <td>${badge}</td>
             <td>${s.confidence.toFixed(1)}%</td>
             <td>${s.score > 0 ? '+' : ''}${s.score.toFixed(3)}</td>
@@ -224,7 +298,7 @@ function renderTable(data) {
     }).join('');
 }
 
-// ── Sorting ────────────────────────────────────────────────────────────────
+// ── Sorting ─────────────────────────────────────────────────────────────────
 
 let sortDir = {};
 function sortTable(col) {
@@ -251,7 +325,7 @@ function sortTable(col) {
     renderTable(stockData);
 }
 
-// ── SSE handler ────────────────────────────────────────────────────────────
+// ── SSE handler ─────────────────────────────────────────────────────────────
 
 window.handleSSE = function(data) {
     if (data.type === 'scan_progress') {
@@ -259,3 +333,6 @@ window.handleSSE = function(data) {
         if (scanText) scanText.textContent = data.message;
     }
 };
+
+// ── Init ────────────────────────────────────────────────────────────────────
+loadMarkets();

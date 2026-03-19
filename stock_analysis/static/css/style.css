@@ -309,3 +309,63 @@ tr.signal-hold td { border-left: 3px solid var(--yellow); }
     font-size: 11px; font-weight: 400; background: var(--bg-hover);
     color: var(--text-muted); text-transform: lowercase;
 }
+
+/* ── Popular stocks bar (international markets) ──────────────────────────── */
+.popular-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 16px; background: var(--bg-secondary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 12px; font-size: 13px;
+}
+.popular-label { color: var(--text-secondary); font-size: 12px; text-transform: uppercase; }
+.popular-stock-btn { font-size: 12px; padding: 4px 10px; }
+
+/* ── Mutual Funds page ───────────────────────────────────────────────────── */
+.funds-page h1 { font-size: 26px; margin-bottom: 4px; }
+.funds-header { margin-bottom: 20px; }
+
+.fund-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+}
+.fund-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.fund-card:hover { border-color: var(--blue); background: var(--bg-hover); }
+.fund-house {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--blue); margin-bottom: 6px;
+}
+.fund-name {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.4; margin-bottom: 8px;
+}
+.fund-category {
+    font-size: 11px; color: var(--text-muted);
+}
+.fund-nav-value {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+}
+.fund-nav-date {
+    font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px;
+}
+.fund-return {
+    font-size: 13px; font-weight: 600; margin-top: 4px;
+}
+.fund-cat-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; background: var(--bg-hover); color: var(--text-secondary);
+}
+.text-muted { color: var(--text-muted); font-size: 12px; }
+
+/* ── Funds detail header ─────────────────────────────────────────────────── */
+#fund-detail .detail-header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+#fund-detail .detail-header h2 {
+    font-size: 20px; flex: 1;
+}

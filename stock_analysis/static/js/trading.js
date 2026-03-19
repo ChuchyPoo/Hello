@@ -33,6 +33,19 @@ function renderSummary(summary) {
     modeEl.className = `summary-value mode-${summary.broker === 'paper' ? 'paper' : 'live'}`;
 }
 
+function formatTicker(ticker) {
+    if (ticker.startsWith('MF:')) return '📊 ' + ticker.replace('MF:', 'Fund #');
+    return ticker.replace(/\.(NS|BO|L|DE|T|HK|AX|SI)$/, '');
+}
+
+function formatSellButton(ticker) {
+    if (ticker.startsWith('MF:')) {
+        const sc = ticker.replace('MF:', '');
+        return `<button class="btn btn-sell btn-sm" onclick="sellMFPosition('${sc}')">REDEEM</button>`;
+    }
+    return `<button class="btn btn-sell btn-sm" onclick="sellPosition('${ticker}')">SELL</button>`;
+}
+
 function renderPositions(positions) {
     const tbody = document.getElementById('positions-tbody');
     if (!positions.length) {
@@ -41,17 +54,20 @@ function renderPositions(positions) {
     }
     tbody.innerHTML = positions.map(p => {
         const pnlClass = p.pnl >= 0 ? 'ret-positive' : 'ret-negative';
+        const isMF = p.ticker.startsWith('MF:');
+        const priceLabel = isMF ? 'NAV' : 'Price';
+        const qtyLabel = isMF ? 'units' : 'shares';
         return `
         <tr>
-            <td><strong>${p.ticker.replace('.NS','')}</strong></td>
-            <td>${p.quantity}</td>
-            <td>₹${p.entry_price.toFixed(2)}</td>
-            <td>₹${p.current_price.toFixed(2)}</td>
+            <td><strong>${formatTicker(p.ticker)}</strong></td>
+            <td>${p.quantity} <span style="font-size:11px;color:var(--text-muted)">${qtyLabel}</span></td>
+            <td>₹${p.entry_price.toFixed(isMF ? 4 : 2)}</td>
+            <td>₹${p.current_price.toFixed(isMF ? 4 : 2)}</td>
             <td class="${pnlClass}">${p.pnl >= 0 ? '+' : ''}₹${p.pnl.toFixed(2)}</td>
             <td class="${pnlClass}">${p.pnl_pct >= 0 ? '+' : ''}${p.pnl_pct.toFixed(1)}%</td>
-            <td>₹${p.stop_loss.toFixed(2)}</td>
-            <td>₹${p.take_profit.toFixed(2)}</td>
-            <td><button class="btn btn-sell btn-sm" onclick="sellPosition('${p.ticker}')">SELL</button></td>
+            <td>${isMF ? '—' : '₹' + p.stop_loss.toFixed(2)}</td>
+            <td>${isMF ? '—' : '₹' + p.take_profit.toFixed(2)}</td>
+            <td>${formatSellButton(p.ticker)}</td>
         </tr>`;
     }).join('');
 }
@@ -67,13 +83,16 @@ function renderJournal(journal) {
     tbody.innerHTML = sorted.map(t => {
         const actionClass = t.action === 'BUY' ? 'ret-positive' : 'ret-negative';
         const statusClass = t.status === 'EXECUTED' ? 'ret-positive' : 'ret-negative';
+        const isMF = (t.ticker || '').startsWith('MF:');
+        const displayTicker = formatTicker(t.ticker || '');
+        const actionLabel = isMF ? (t.action === 'BUY' ? 'INVEST' : 'REDEEM') : t.action;
         return `
         <tr>
             <td>${new Date(t.timestamp).toLocaleString()}</td>
-            <td><strong>${(t.ticker || '').replace('.NS','')}</strong></td>
-            <td class="${actionClass}">${t.action}</td>
-            <td>${t.quantity}</td>
-            <td>₹${(t.price || 0).toFixed(2)}</td>
+            <td><strong>${displayTicker}</strong></td>
+            <td class="${actionClass}">${actionLabel}</td>
+            <td>${t.quantity} ${isMF ? 'units' : ''}</td>
+            <td>₹${(t.price || 0).toFixed(isMF ? 4 : 2)}</td>
             <td class="${statusClass}">${t.status}</td>
             <td>${t.reason || ''}</td>
         </tr>`;
@@ -91,6 +110,20 @@ async function sellPosition(ticker) {
         loadPortfolio();
     } catch (e) {
         console.error('Sell failed:', e);
+    }
+}
+
+async function sellMFPosition(schemeCode) {
+    try {
+        const resp = await fetch('/api/mf/sell', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({scheme_code: schemeCode})
+        });
+        await resp.json();
+        loadPortfolio();
+    } catch (e) {
+        console.error('MF redeem failed:', e);
     }
 }
 

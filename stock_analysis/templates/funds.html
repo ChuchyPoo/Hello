@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Mutual Funds - Stock Analysis{% endblock %}
+
+{% block content %}
+<div class="funds-page">
+    <div class="funds-header">
+        <h1>Mutual Funds</h1>
+        <p class="subtitle">Indian mutual funds — NAV data from AMFI via mfapi.in</p>
+    </div>
+
+    <!-- Search bar -->
+    <div class="controls-bar">
+        <div class="control-group search-group">
+            <label>Search Fund</label>
+            <div class="search-wrap">
+                <input type="text" id="mf-search" placeholder="e.g. Mirae, SBI Small Cap, ELSS..."
+                       autocomplete="off" oninput="onMFSearchInput()" onkeydown="onMFSearchKey(event)">
+                <div class="search-dropdown" id="mf-dropdown"></div>
+            </div>
+            <button class="btn btn-primary" onclick="searchFunds()">Search</button>
+        </div>
+        <div class="control-group" id="mf-status" style="display:none">
+            <div class="spinner"></div>
+            <span id="mf-status-text">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Fund detail panel (shown when a fund is selected) -->
+    <div id="fund-detail" style="display:none">
+        <div class="detail-header">
+            <button class="btn btn-secondary btn-sm" onclick="closeFundDetail()">← Back to list</button>
+            <h2 id="fund-title">Fund Name</h2>
+            <span id="fund-category" class="fund-cat-badge"></span>
+        </div>
+
+        <div class="detail-grid">
+            <!-- NAV Chart -->
+            <div class="card chart-card">
+                <h3>NAV History (1 Year)</h3>
+                <canvas id="nav-chart"></canvas>
+            </div>
+
+            <!-- Key stats -->
+            <div class="card metrics-card">
+                <h3>Key Stats</h3>
+                <div id="fund-metrics" class="metrics-grid"></div>
+            </div>
+        </div>
+
+        <!-- Paper Buy -->
+        <div class="card trade-card">
+            <h3>Paper Invest</h3>
+            <div class="trade-form">
+                <div class="trade-amount-group">
+                    <label>Amount (INR)</label>
+                    <input type="number" id="mf-amount" value="5000" min="100" step="500">
+                    <div class="quick-amounts">
+                        <button class="btn btn-sm btn-secondary" onclick="setMFAmount(1000)">1K</button>
+                        <button class="btn btn-sm btn-secondary" onclick="setMFAmount(5000)">5K</button>
+                        <button class="btn btn-sm btn-secondary" onclick="setMFAmount(10000)">10K</button>
+                        <button class="btn btn-sm btn-secondary" onclick="setMFAmount(25000)">25K</button>
+                        <button class="btn btn-sm btn-secondary" onclick="setMFAmount(50000)">50K</button>
+                    </div>
+                </div>
+                <div id="mf-units-info" class="trade-info"></div>
+                <div class="trade-actions">
+                    <button class="btn btn-buy" onclick="buyFund()">INVEST</button>
+                    <span class="trade-note">(Paper mode — not real money)</span>
+                </div>
+            </div>
+            <div id="mf-trade-result" class="trade-result"></div>
+        </div>
+    </div>
+
+    <!-- Fund list -->
+    <div id="fund-list-section">
+        <h3>Popular Funds</h3>
+        <div id="fund-list" class="fund-grid">
+            {% for f in popular_funds %}
+            <div class="fund-card" onclick="loadFund('{{ f.scheme_code }}')">
+                <div class="fund-house">{{ f.fund_house }}</div>
+                <div class="fund-name">{{ f.scheme_name }}</div>
+                <div class="fund-nav-placeholder" id="nav-{{ f.scheme_code }}">
+                    <span class="text-muted">Loading NAV...</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Search results -->
+        <div id="search-results-section" style="display:none">
+            <h3>Search Results</h3>
+            <div id="fund-search-results" class="fund-grid"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/funds.js"></script>
+{% endblock %}

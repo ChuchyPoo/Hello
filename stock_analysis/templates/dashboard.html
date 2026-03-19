@@ -6,6 +6,19 @@
     <!-- Controls -->
     <div class="controls-bar">
         <div class="control-group">
+            <label>Market</label>
+            <select id="market-filter" onchange="onMarketChange()">
+                <option value="nse_india">🇮🇳 NSE India</option>
+                <option value="us">🇺🇸 US Markets</option>
+                <option value="lse">🇬🇧 London (LSE)</option>
+                <option value="frankfurt">🇩🇪 Frankfurt</option>
+                <option value="tokyo">🇯🇵 Tokyo</option>
+                <option value="hkex">🇭🇰 Hong Kong</option>
+                <option value="asx">🇦🇺 Australia</option>
+                <option value="sgx">🇸🇬 Singapore</option>
+            </select>
+        </div>
+        <div class="control-group" id="sector-group">
             <label>Sector</label>
             <select id="sector-filter">
                 <option value="all">All Sectors</option>
@@ -15,15 +28,15 @@
             </select>
         </div>
         <div class="control-group">
-            <label>Max Price (INR)</label>
+            <label>Max Price</label>
             <input type="number" id="max-price" value="1000" min="1" step="50">
         </div>
-        <div class="control-group">
+        <div class="control-group" id="scan-buttons">
             <button id="scan-btn" class="btn btn-primary" onclick="runScan()">Scan Stocks</button>
             <button id="scan-all-btn" class="btn btn-secondary" onclick="runScanAll()">Scan All NSE</button>
         </div>
         <div class="control-group search-group">
-            <label>Search Any Stock</label>
+            <label id="search-label">Search Any Stock</label>
             <div class="search-wrap">
                 <input type="text" id="stock-search" placeholder="e.g. INFY or Infosys" autocomplete="off"
                        oninput="onSearchInput()" onkeydown="onSearchKey(event)">
@@ -36,6 +49,9 @@
             <span id="scan-text">Scanning...</span>
         </div>
     </div>
+
+    <!-- Popular stocks for selected market (hidden for NSE since we have scan) -->
+    <div id="popular-stocks-bar" class="popular-bar" style="display:none"></div>
 
     <!-- Freshness banner -->
     <div id="freshness-banner" class="freshness-banner" style="display:none"></div>
