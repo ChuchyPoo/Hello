@@ -2,649 +2,549 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Oval Office Coke Button</title>
+  <title>Bloomberg Terminal - GM</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { overflow:hidden; background:#000; font-family:'Georgia',serif; }
-    canvas { display:block; }
-    #hud {
-      position:fixed; top:20px; left:50%; transform:translateX(-50%);
-      color:#f5c518; font-size:1.4rem; letter-spacing:2px;
-      text-shadow:0 2px 12px rgba(0,0,0,0.9);
-      pointer-events:none; white-space:nowrap;
+    body { background:#0a0a0a; font-family:'Courier New',monospace; color:#ff8000; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
+
+    /* TOP BAR */
+    #topbar {
+      background:#000; border-bottom:2px solid #ff8000;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:4px 12px; flex-shrink:0;
     }
-    #message {
-      position:fixed; bottom:36px; left:50%; transform:translateX(-50%);
-      color:#fff; font-size:1.1rem; letter-spacing:1px;
-      text-shadow:0 2px 10px rgba(0,0,0,1);
-      pointer-events:none; text-align:center;
+    #topbar .logo { font-size:1.3rem; font-weight:bold; color:#ff8000; letter-spacing:3px; }
+    #topbar .ticker { font-size:0.85rem; color:#ffcc00; }
+    #topbar .clock { font-size:0.85rem; color:#aaa; }
+
+    /* FUNCTION KEY ROW */
+    #fnbar {
+      background:#111; border-bottom:1px solid #333;
+      display:flex; gap:2px; padding:3px 6px; flex-shrink:0; flex-wrap:wrap;
     }
-    #hint {
-      position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
-      color:rgba(255,255,255,0.45); font-size:0.8rem;
-      pointer-events:none;
+    .fn-btn {
+      background:#1a1a1a; border:1px solid #444; color:#ffcc00;
+      font-size:0.6rem; padding:2px 6px; cursor:pointer; border-radius:2px;
+      white-space:nowrap;
     }
+    .fn-btn:hover { background:#2a2a00; border-color:#ffcc00; }
+
+    /* MAIN LAYOUT */
+    #main { display:flex; flex:1; overflow:hidden; }
+
+    /* LEFT PANEL */
+    #left-panel {
+      width:220px; background:#050505; border-right:1px solid #333;
+      display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto;
+    }
+    .panel-header {
+      background:#1a0a00; color:#ff8000; font-size:0.7rem; font-weight:bold;
+      padding:4px 8px; border-bottom:1px solid #333; letter-spacing:1px;
+    }
+    #company-info { padding:8px; font-size:0.65rem; line-height:1.8; }
+    #company-info .label { color:#888; }
+    #company-info .val { color:#ffcc00; }
+    #company-info .pos { color:#00ff88; }
+    #company-info .neg { color:#ff4444; }
+
+    /* NODE GRAPH */
+    #graph-container { flex:1; position:relative; overflow:hidden; }
+    #graph-svg { width:100%; height:100%; }
+
+    /* RIGHT PANEL */
+    #right-panel {
+      width:200px; background:#050505; border-left:1px solid #333;
+      display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto;
+    }
+    #node-detail { padding:8px; font-size:0.62rem; line-height:1.9; }
+    #node-detail .section-title { color:#ff8000; font-weight:bold; margin-top:6px; border-bottom:1px solid #333; padding-bottom:2px; }
+    #node-detail .row { display:flex; justify-content:space-between; }
+    #node-detail .key { color:#888; }
+    #node-detail .value { color:#ffcc00; }
+
+    /* BOTTOM KEYBOARD */
+    #keyboard {
+      background:#111; border-top:2px solid #444; padding:6px 10px;
+      display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap;
+    }
+    .key-group { display:flex; gap:2px; align-items:center; }
+    .key-sep { width:1px; height:28px; background:#444; margin:0 4px; }
+    .kbd {
+      border-radius:3px; font-size:0.55rem; font-weight:bold;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      cursor:pointer; border:1px solid #555; min-width:28px; height:26px; padding:0 4px;
+      user-select:none;
+    }
+    .kbd:hover { filter:brightness(1.3); }
+    .kbd:active { transform:scale(0.95); }
+    .kbd-yellow { background:#1a1800; color:#ffcc00; border-color:#665500; }
+    .kbd-red { background:#1a0000; color:#ff4444; border-color:#660000; }
+    .kbd-green { background:#001a08; color:#00ff88; border-color:#006633; }
+    .kbd-gray { background:#1a1a1a; color:#aaa; border-color:#444; }
+    .kbd-orange { background:#1a0800; color:#ff8000; border-color:#663300; }
+    .kbd .top-label { font-size:0.45rem; color:inherit; opacity:0.7; }
+
+    /* TOOLTIP */
+    #tooltip {
+      position:fixed; background:#111; border:1px solid #ff8000;
+      color:#ffcc00; font-size:0.65rem; padding:8px 12px;
+      pointer-events:none; display:none; z-index:100; max-width:200px;
+      line-height:1.6;
+    }
+
+    /* LEGEND */
+    #legend {
+      position:absolute; bottom:10px; left:10px;
+      font-size:0.6rem; background:rgba(0,0,0,0.8);
+      border:1px solid #333; padding:6px 10px; pointer-events:none;
+    }
+    .legend-item { display:flex; align-items:center; gap:6px; margin:2px 0; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* SEARCH BAR */
+    #searchbar {
+      background:#000; border-bottom:1px solid #333;
+      display:flex; align-items:center; padding:3px 10px; gap:8px; flex-shrink:0;
+    }
+    #searchbar span { color:#ff8000; font-size:0.75rem; font-weight:bold; }
+    #searchbar input {
+      background:#0a0a0a; border:1px solid #444; color:#ffcc00;
+      font-family:'Courier New',monospace; font-size:0.75rem;
+      padding:2px 8px; outline:none; width:160px;
+    }
+    #searchbar input:focus { border-color:#ff8000; }
+    .cmd-tag {
+      background:#1a1a00; border:1px solid #555; color:#888;
+      font-size:0.6rem; padding:1px 6px; cursor:pointer;
+    }
+    .cmd-tag:hover { color:#ffcc00; border-color:#ffcc00; }
   </style>
 </head>
 <body>
-  <div id="hud">Cokes collected: <span id="count">0</span></div>
-  <div id="message">Click the button, Mr. President</div>
-  <div id="hint">click the red button</div>
 
-  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
-  <script>
-  (function(){
-    // ── Renderer ──────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias:true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    document.body.appendChild(renderer.domElement);
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">BLOOMBERG</div>
+  <div class="ticker">
+    <span style="color:#00ff88">GM US Equity</span>
+    &nbsp;|&nbsp;
+    <span style="color:#ffcc00">$47.23</span>
+    &nbsp;<span style="color:#00ff88">+1.14 (+2.47%)</span>
+    &nbsp;|&nbsp;
+    <span style="color:#aaa">Vol: 24.3M</span>
+    &nbsp;|&nbsp;
+    <span style="color:#aaa">Mkt Cap: 47.8B</span>
+  </div>
+  <div class="clock" id="clock">--:--:--  EDT</div>
+</div>
 
-    // ── Scene / Camera ─────────────────────────────────────────
-    const scene  = new THREE.Scene();
-    scene.background = new THREE.Color(0x2a1f0e);
-    scene.fog = new THREE.Fog(0x1a1208, 12, 25);
+<!-- FUNCTION KEYS ROW -->
+<div id="fnbar">
+  <span class="fn-btn">EQUITY</span>
+  <span class="fn-btn">DES</span>
+  <span class="fn-btn active" style="background:#1a0800;border-color:#ff8000;color:#ff8000">SPLC</span>
+  <span class="fn-btn">FA</span>
+  <span class="fn-btn">RV</span>
+  <span class="fn-btn">ANR</span>
+  <span class="fn-btn">OWN</span>
+  <span class="fn-btn">CF</span>
+  <span class="fn-btn">CN</span>
+  <span class="fn-btn">GP</span>
+  <span class="fn-btn">MMAP</span>
+  <span class="fn-btn">BI</span>
+  <span class="fn-btn" style="margin-left:auto">GM US &lt;EQUITY&gt; SPLC &lt;GO&gt;</span>
+</div>
 
-    const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 60);
-    camera.position.set(0, 2.8, 7);
-    camera.lookAt(0, 1.2, 0);
+<!-- SEARCH BAR -->
+<div id="searchbar">
+  <span>GM US Equity &gt;</span>
+  <input type="text" id="cmd-input" value="SPLC" readonly/>
+  <span class="cmd-tag">Supply Chain</span>
+  <span class="cmd-tag">Node Graph</span>
+  <span style="margin-left:auto;color:#888;font-size:0.65rem">Click any node to explore | Drag to rearrange</span>
+</div>
 
-    // ── Lighting ───────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xfff4d6, 0.55));
+<!-- MAIN -->
+<div id="main">
 
-    const sun = new THREE.DirectionalLight(0xfff8e0, 1.4);
-    sun.position.set(4, 9, 4);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048,2048);
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far  = 30;
-    sun.shadow.camera.left = sun.shadow.camera.bottom = -8;
-    sun.shadow.camera.right = sun.shadow.camera.top  =  8;
-    scene.add(sun);
+  <!-- LEFT PANEL: Company Info -->
+  <div id="left-panel">
+    <div class="panel-header">GM — COMPANY OVERVIEW</div>
+    <div id="company-info">
+      <div><span class="label">Name: </span><span class="val">General Motors Co</span></div>
+      <div><span class="label">Ticker: </span><span class="val">GM US</span></div>
+      <div><span class="label">Exchange: </span><span class="val">NYSE</span></div>
+      <div><span class="label">Sector: </span><span class="val">Consumer Disc</span></div>
+      <div><span class="label">Industry: </span><span class="val">Auto Manufacturers</span></div>
+      <div style="margin-top:6px"><span class="label">Last: </span><span class="val">$47.23</span></div>
+      <div><span class="label">Open: </span><span class="val">$46.10</span></div>
+      <div><span class="label">High: </span><span class="val">$47.89</span></div>
+      <div><span class="label">Low:  </span><span class="val">$45.98</span></div>
+      <div><span class="label">Prev: </span><span class="val">$46.09</span></div>
+      <div><span class="label">Chg:  </span><span class="pos">+1.14 (+2.47%)</span></div>
+      <div style="margin-top:6px"><span class="label">P/E: </span><span class="val">5.8x</span></div>
+      <div><span class="label">EV/EBITDA: </span><span class="val">4.2x</span></div>
+      <div><span class="label">Div Yield: </span><span class="val">1.01%</span></div>
+      <div><span class="label">Beta: </span><span class="val">1.42</span></div>
+      <div><span class="label">52W High: </span><span class="val">$61.24</span></div>
+      <div><span class="label">52W Low:  </span><span class="val">$39.51</span></div>
+      <div style="margin-top:6px;border-top:1px solid #333;padding-top:6px">
+        <div><span class="label">Revenue: </span><span class="val">$187.4B</span></div>
+        <div><span class="label">EBITDA: </span><span class="val">$18.6B</span></div>
+        <div><span class="label">Net Income: </span><span class="val">$7.1B</span></div>
+        <div><span class="label">Employees: </span><span class="val">163,000</span></div>
+      </div>
+      <div style="margin-top:6px;border-top:1px solid #333;padding-top:6px;color:#888;font-size:0.58rem">
+        SPLC — Supply Chain view showing tier-1 suppliers (left) and distribution customers (right). Surrounding nodes show indices, competitors, shareholders, analysts and board members.
+      </div>
+    </div>
+  </div>
 
-    const fill = new THREE.PointLight(0xffeedd, 0.9, 18);
-    fill.position.set(-4, 5, 3);
-    scene.add(fill);
+  <!-- NODE GRAPH -->
+  <div id="graph-container">
+    <svg id="graph-svg"></svg>
+    <div id="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#ff8000"></div><span>Center (GM)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3399ff"></div><span>Suppliers</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00cc66"></div><span>Customers</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#cc44ff"></div><span>Indices</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4444"></div><span>Competitors</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffcc00"></div><span>Shareholders</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6699"></div><span>Analysts</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#66ccff"></div><span>Board / Mgmt</span></div>
+    </div>
+  </div>
 
-    // Window glow (left/right)
-    [-5, 5].forEach(x => {
-      const wl = new THREE.PointLight(0xd4eaff, 0.6, 10);
-      wl.position.set(x, 3, -4);
-      scene.add(wl);
+  <!-- RIGHT PANEL: Node Detail -->
+  <div id="right-panel">
+    <div class="panel-header">NODE DETAIL</div>
+    <div id="node-detail">
+      <div style="color:#555;font-size:0.62rem">Click a node to view details</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- KEYBOARD -->
+<div id="keyboard">
+  <!-- Yellow function keys -->
+  <div class="key-group">
+    <div class="kbd kbd-yellow"><div class="top-label">F1</div>HELP</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F2</div>NEWS</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F3</div>FIND</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F4</div>MENU</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F5</div>MSG</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F6</div>PRTSC</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F7</div>STOP</div>
+    <div class="kbd kbd-yellow"><div class="top-label">F8</div>SAVE</div>
+  </div>
+  <div class="key-sep"></div>
+  <!-- Red key -->
+  <div class="key-group">
+    <div class="kbd kbd-red" style="min-width:36px">DELETE</div>
+    <div class="kbd kbd-red">BACK<br>SPACE</div>
+  </div>
+  <div class="key-sep"></div>
+  <!-- Gray keys -->
+  <div class="key-group">
+    <div class="kbd kbd-gray">ESC</div>
+    <div class="kbd kbd-gray">TAB</div>
+    <div class="kbd kbd-gray" style="min-width:40px">ENTER</div>
+  </div>
+  <div class="key-sep"></div>
+  <!-- Orange action keys -->
+  <div class="key-group">
+    <div class="kbd kbd-orange">EQUITY</div>
+    <div class="kbd kbd-orange">CORP</div>
+    <div class="kbd kbd-orange">CMDTY</div>
+    <div class="kbd kbd-orange">INDEX</div>
+    <div class="kbd kbd-orange">CRNCY</div>
+    <div class="kbd kbd-orange">MTGE</div>
+    <div class="kbd kbd-orange">MUNI</div>
+    <div class="kbd kbd-orange">PFD</div>
+  </div>
+  <div class="key-sep"></div>
+  <!-- Green GO key -->
+  <div class="key-group">
+    <div class="kbd kbd-green" style="min-width:40px;font-size:0.75rem">GO</div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tooltip"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const nodes = [
+  // Center
+  { id:'GM', label:'GM', type:'center', sub:'General Motors Co', detail:{
+    ticker:'GM US', price:'$47.23', chg:'+2.47%', mktCap:'$47.8B', employees:'163,000', hq:'Detroit, MI', founded:'1908'
+  }},
+
+  // SUPPLIERS (left cluster)
+  { id:'BOSCH', label:'Bosch', type:'supplier', sub:'Parts & Electronics', detail:{ relationship:'Tier-1 Supplier', spend:'~$3.2B/yr', category:'Electronics, Sensors, Fuel Systems', country:'Germany' }},
+  { id:'CONT', label:'Continental', type:'supplier', sub:'Tires & Systems', detail:{ relationship:'Tier-1 Supplier', spend:'~$1.8B/yr', category:'Tires, Brakes, Powertrain', country:'Germany' }},
+  { id:'MGNA', label:'Magna', type:'supplier', sub:'Auto Parts', detail:{ relationship:'Tier-1 Supplier', spend:'~$4.1B/yr', category:'Body, Chassis, ADAS', country:'Canada' }},
+  { id:'BWA', label:'BorgWarner', type:'supplier', sub:'Drivetrain', detail:{ relationship:'Tier-1 Supplier', spend:'~$1.4B/yr', category:'Drivetrain, EV Components', country:'USA' }},
+  { id:'APTV', label:'Aptiv', type:'supplier', sub:'Wiring & Software', detail:{ relationship:'Tier-1 Supplier', spend:'~$2.7B/yr', category:'Electrical Architecture, ADAS', country:'Ireland' }},
+  { id:'LEA', label:'Lear Corp', type:'supplier', sub:'Seating & E-Systems', detail:{ relationship:'Tier-1 Supplier', spend:'~$1.1B/yr', category:'Seating, Electrical', country:'USA' }},
+  { id:'STEEL', label:'US Steel', type:'supplier', sub:'Steel & Materials', detail:{ relationship:'Raw Materials', spend:'~$900M/yr', category:'Steel Coils, Sheet Metal', country:'USA' }},
+  { id:'LG-ENERGY', label:'LG Energy', type:'supplier', sub:'EV Batteries', detail:{ relationship:'JV Partner (Ultium)', spend:'~$2.0B/yr', category:'Battery Cells, Modules', country:'South Korea' }},
+  { id:'SAMSUNG', label:'Samsung SDI', type:'supplier', sub:'Battery Cells', detail:{ relationship:'Tier-1 Supplier', spend:'~$800M/yr', category:'Prismatic Battery Cells', country:'South Korea' }},
+  { id:'DENSO', label:'Denso', type:'supplier', sub:'HVAC & Electronics', detail:{ relationship:'Tier-1 Supplier', spend:'~$600M/yr', category:'HVAC, Ignition, Sensors', country:'Japan' }},
+
+  // CUSTOMERS (right cluster)
+  { id:'DEALERS', label:'Dealerships', type:'customer', sub:'~4,000 US Dealers', detail:{ type:'Retail Distribution', volume:'~2.1M units/yr', revenue:'~$95B', geography:'USA' }},
+  { id:'FLEET', label:'Fleet/Rental', type:'customer', sub:'Corporate Fleets', detail:{ type:'Fleet Sales', volume:'~300K units/yr', revenue:'~$12B', examples:'Hertz, Enterprise, Gov' }},
+  { id:'CHINA-JV', label:'China JV', type:'customer', sub:'SAIC-GM JV', detail:{ type:'Joint Venture', volume:'~2.4M units/yr', revenue:'~$24B', geography:'China' }},
+  { id:'GOV', label:'Government', type:'customer', sub:'Military & Munic.', detail:{ type:'Government Contracts', volume:'~50K units/yr', revenue:'~$3B', examples:'DoD, GSA contracts' }},
+  { id:'CANADA-MKT', label:'Canada', type:'customer', sub:'Canadian Market', detail:{ type:'International Sales', volume:'~220K units/yr', revenue:'~$9B', geography:'Canada' }},
+  { id:'LATAM', label:'Latin America', type:'customer', sub:'LATAM Distribution', detail:{ type:'International Sales', volume:'~170K units/yr', revenue:'~$7B', geography:'Brazil, Mexico' }},
+
+  // INDICES
+  { id:'SPX', label:'S&P 500', type:'index', sub:'Member', detail:{ index:'S&P 500', weight:'0.11%', since:'1955', sector:'Consumer Disc' }},
+  { id:'DJIA', label:'DJIA', type:'index', sub:'Member (historic)', detail:{ index:'Dow Jones Industrial', weight:'N/A (removed 2009)', note:'Removed post-bankruptcy' }},
+  { id:'RUSSELL', label:'Russell 1000', type:'index', sub:'Member', detail:{ index:'Russell 1000', weight:'0.08%', note:'Large-cap index' }},
+  { id:'MSCI', label:'MSCI USA', type:'index', sub:'Member', detail:{ index:'MSCI USA Index', weight:'0.09%', note:'Global large/mid cap' }},
+
+  // COMPETITORS
+  { id:'F', label:'Ford', type:'competitor', sub:'$47.1B Mkt Cap', detail:{ ticker:'F US', price:'$11.87', mktCap:'$47.1B', segment:'Trucks, EVs, Mustang' }},
+  { id:'TM', label:'Toyota', type:'competitor', sub:'$236B Mkt Cap', detail:{ ticker:'7203 JP', price:'¥2,891', mktCap:'$236B', segment:'Global #1 Volume' }},
+  { id:'STLA', label:'Stellantis', type:'competitor', sub:'$25.8B Mkt Cap', detail:{ ticker:'STLA US', price:'$8.44', mktCap:'$25.8B', segment:'Jeep, RAM, Chrysler' }},
+  { id:'TSLA', label:'Tesla', type:'competitor', sub:'$790B Mkt Cap', detail:{ ticker:'TSLA US', price:'$248.52', mktCap:'$790B', segment:'EV Pure-play' }},
+
+  // SHAREHOLDERS
+  { id:'VANG', label:'Vanguard', type:'shareholder', sub:'8.2% stake', detail:{ holder:'Vanguard Group', shares:'81.4M', pct:'8.2%', style:'Passive/Index' }},
+  { id:'BLK', label:'BlackRock', type:'shareholder', sub:'6.7% stake', detail:{ holder:'BlackRock Inc', shares:'66.3M', pct:'6.7%', style:'Passive/Active' }},
+  { id:'SST', label:'State Street', type:'shareholder', sub:'4.1% stake', detail:{ holder:'State Street Global', shares:'40.7M', pct:'4.1%', style:'Passive/Index' }},
+  { id:'TROW', label:'T. Rowe Price', type:'shareholder', sub:'3.3% stake', detail:{ holder:'T. Rowe Price', shares:'32.6M', pct:'3.3%', style:'Active' }},
+
+  // ANALYSTS
+  { id:'GS-ANL', label:'Goldman Sachs', type:'analyst', sub:'BUY $58 PT', detail:{ firm:'Goldman Sachs', rating:'BUY', priceTarget:'$58', analyst:'Mark Delaney', date:'Jan 2026' }},
+  { id:'MS-ANL', label:'Morgan Stanley', type:'analyst', sub:'OW $55 PT', detail:{ firm:'Morgan Stanley', rating:'OVERWEIGHT', priceTarget:'$55', analyst:'Adam Jonas', date:'Feb 2026' }},
+  { id:'JPM-ANL', label:'JPMorgan', type:'analyst', sub:'NEUT $48 PT', detail:{ firm:'JPMorgan', rating:'NEUTRAL', priceTarget:'$48', analyst:'Ryan Brinkman', date:'Mar 2026' }},
+
+  // BOARD / MGMT
+  { id:'CEO', label:'Mary Barra', type:'board', sub:'Chair & CEO', detail:{ name:'Mary T. Barra', role:'Chair & CEO', since:'2014', background:'GM lifer, EE degree GMI' }},
+  { id:'CFO', label:'Paul Jacobson', type:'board', sub:'CFO', detail:{ name:'Paul Jacobson', role:'Executive VP & CFO', since:'2020', background:'Prev. Delta Air Lines CFO' }},
+  { id:'PRESID', label:'Mark Reuss', type:'board', sub:'President', detail:{ name:'Mark Reuss', role:'President', since:'2019', background:'GM product chief, design' }},
+  { id:'DIR1', label:'Carol Stephenson', type:'board', sub:'Lead Director', detail:{ name:'Carol Stephenson', role:'Lead Independent Director', since:'2003', background:'Former Lucent Canada CEO' }},
+];
+
+const links = [];
+const center = 'GM';
+nodes.forEach(n => {
+  if(n.id !== center) links.push({ source: center, target: n.id, type: n.type });
+});
+
+// Extra cross-links for suppliers/customers
+links.push({ source:'BOSCH', target:'CONT', type:'supplier' });
+links.push({ source:'BOSCH', target:'APTV', type:'supplier' });
+links.push({ source:'MGNA', target:'LEA', type:'supplier' });
+links.push({ source:'LG-ENERGY', target:'SAMSUNG', type:'supplier' });
+links.push({ source:'DEALERS', target:'FLEET', type:'customer' });
+links.push({ source:'F', target:'STLA', type:'competitor' });
+links.push({ source:'VANG', target:'BLK', type:'shareholder' });
+links.push({ source:'CEO', target:'CFO', type:'board' });
+links.push({ source:'CEO', target:'PRESID', type:'board' });
+
+// ─── COLOR MAP ───────────────────────────────────────────────────────────────
+const colorMap = {
+  center:      '#ff8000',
+  supplier:    '#3399ff',
+  customer:    '#00cc66',
+  index:       '#cc44ff',
+  competitor:  '#ff4444',
+  shareholder: '#ffcc00',
+  analyst:     '#ff6699',
+  board:       '#66ccff',
+};
+
+// ─── CLOCK ───────────────────────────────────────────────────────────────────
+function updateClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s}  EDT`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── D3 GRAPH ────────────────────────────────────────────────────────────────
+const svg = d3.select('#graph-svg');
+const container = document.getElementById('graph-container');
+
+function getSize(){
+  return { w: container.clientWidth, h: container.clientHeight };
+}
+
+let { w, h } = getSize();
+
+const g = svg.append('g');
+
+// Zoom
+const zoom = d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+
+// Arrow marker
+svg.append('defs').append('marker')
+  .attr('id','arrow').attr('viewBox','0 -4 8 8').attr('refX',18).attr('refY',0)
+  .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
+  .append('path').attr('d','M0,-4L8,0L0,4').attr('fill','#444');
+
+// Simulation
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d=>d.id).distance(d => {
+    if(d.source.id === center || d.target.id === center) return 160;
+    return 80;
+  }).strength(0.5))
+  .force('charge', d3.forceManyBody().strength(-400))
+  .force('center', d3.forceCenter(w/2, h/2))
+  .force('collision', d3.forceCollide(40))
+  .force('x', d3.forceX().x(d => {
+    if(d.type === 'supplier') return w * 0.2;
+    if(d.type === 'customer') return w * 0.8;
+    return w/2;
+  }).strength(d => (d.type==='supplier'||d.type==='customer') ? 0.15 : 0))
+  .force('y', d3.forceY(h/2).strength(0.03));
+
+// Links
+const linkSel = g.append('g').selectAll('line')
+  .data(links).join('line')
+  .attr('stroke', d => {
+    const t = d.type;
+    return colorMap[t] ? colorMap[t]+'44' : '#33333388';
+  })
+  .attr('stroke-width', d => d.source === center || d.target === center ? 1.5 : 0.8)
+  .attr('marker-end', 'url(#arrow)');
+
+// Node groups
+const nodeSel = g.append('g').selectAll('g')
+  .data(nodes).join('g')
+  .attr('cursor','pointer')
+  .call(d3.drag()
+    .on('start', (e, d) => { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on('drag',  (e, d) => { d.fx=e.x; d.fy=e.y; })
+    .on('end',   (e, d) => { if(!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; })
+  )
+  .on('click', onNodeClick)
+  .on('mouseover', onHover)
+  .on('mouseout', () => { document.getElementById('tooltip').style.display='none'; });
+
+// Node circles
+nodeSel.append('circle')
+  .attr('r', d => d.type === 'center' ? 28 : 16)
+  .attr('fill', d => colorMap[d.type] || '#666')
+  .attr('fill-opacity', d => d.type==='center' ? 0.9 : 0.75)
+  .attr('stroke', d => colorMap[d.type] || '#666')
+  .attr('stroke-width', d => d.type==='center' ? 3 : 1.5)
+  .attr('stroke-opacity', 1);
+
+// Node labels
+nodeSel.append('text')
+  .attr('text-anchor','middle')
+  .attr('dy', d => d.type==='center' ? '0.35em' : '-1.6em')
+  .attr('fill', d => colorMap[d.type] || '#aaa')
+  .attr('font-size', d => d.type==='center' ? '0.8rem' : '0.6rem')
+  .attr('font-family','Courier New,monospace')
+  .attr('font-weight','bold')
+  .attr('pointer-events','none')
+  .text(d => d.label);
+
+// Sub-labels
+nodeSel.append('text')
+  .attr('text-anchor','middle')
+  .attr('dy', d => d.type==='center' ? '1.6em' : '-0.5em')
+  .attr('fill','#666')
+  .attr('font-size','0.5rem')
+  .attr('font-family','Courier New,monospace')
+  .attr('pointer-events','none')
+  .text(d => d.sub);
+
+// Type badge (small tag below circle)
+nodeSel.filter(d => d.type !== 'center').append('text')
+  .attr('text-anchor','middle')
+  .attr('dy','2.4em')
+  .attr('fill', d => colorMap[d.type]+'99')
+  .attr('font-size','0.45rem')
+  .attr('font-family','Courier New,monospace')
+  .attr('pointer-events','none')
+  .text(d => d.type.toUpperCase());
+
+simulation.on('tick', () => {
+  linkSel
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// ─── INTERACTIONS ────────────────────────────────────────────────────────────
+function onHover(event, d){
+  const tt = document.getElementById('tooltip');
+  tt.style.display = 'block';
+  tt.style.left = (event.clientX + 12) + 'px';
+  tt.style.top  = (event.clientY - 10) + 'px';
+  let html = `<b style="color:${colorMap[d.type]}">${d.label}</b><br>${d.sub}<br><span style="color:#888">${d.type.toUpperCase()}</span>`;
+  tt.innerHTML = html;
+}
+
+function onNodeClick(event, d){
+  // Highlight
+  nodeSel.select('circle')
+    .attr('stroke-width', n => n.id === d.id ? 4 : (n.type==='center' ? 3 : 1.5))
+    .attr('fill-opacity', n => n.id === d.id ? 1 : (n.type==='center' ? 0.9 : 0.75));
+
+  // Render detail panel
+  const panel = document.getElementById('node-detail');
+  const col = colorMap[d.type] || '#aaa';
+  let html = `<div style="color:${col};font-weight:bold;font-size:0.75rem;margin-bottom:6px">${d.label}</div>`;
+  html += `<div style="color:#888;margin-bottom:6px">${d.sub}</div>`;
+  html += `<div class="section-title">${d.type.toUpperCase()} DETAILS</div>`;
+  if(d.detail){
+    Object.entries(d.detail).forEach(([k,v]) => {
+      html += `<div class="row"><span class="key">${k}:</span><span class="value">${v}</span></div>`;
     });
-
-    // ── Helper: box ────────────────────────────────────────────
-    function box(w,h,d, color, rx,ry,rz, x,y,z, shadow=true){
-      const m = new THREE.Mesh(
-        new THREE.BoxGeometry(w,h,d),
-        new THREE.MeshLambertMaterial({color})
-      );
-      m.rotation.set(rx||0,ry||0,rz||0);
-      m.position.set(x,y,z);
-      if(shadow){ m.castShadow=true; m.receiveShadow=true; }
-      scene.add(m); return m;
-    }
-
-    // ── FLOOR: oval carpet with presidential seal ──────────────
-    (function(){
-      const C = document.createElement('canvas');
-      C.width = C.height = 1024;
-      const ctx = C.getContext('2d');
-
-      // beige base
-      ctx.fillStyle = '#c4b08a'; ctx.fillRect(0,0,1024,1024);
-
-      // outer oval border
-      ctx.save();
-      ctx.strokeStyle='#a08050'; ctx.lineWidth=50;
-      ctx.beginPath();
-      ctx.ellipse(512,512,480,480,0,0,Math.PI*2);
-      ctx.stroke(); ctx.restore();
-
-      // dark ring
-      ctx.save();
-      ctx.strokeStyle='#8a6a38'; ctx.lineWidth=12;
-      ctx.beginPath(); ctx.arc(512,512,350,0,Math.PI*2); ctx.stroke();
-      ctx.restore();
-
-      // Eagle (simplified silhouette)
-      ctx.save();
-      ctx.fillStyle='#7a5c28';
-      // body
-      ctx.beginPath(); ctx.ellipse(512,540,55,80,0,0,Math.PI*2); ctx.fill();
-      // wings
-      ctx.beginPath(); ctx.ellipse(400,510,100,28,-0.3,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(624,510,100,28,0.3,0,Math.PI*2); ctx.fill();
-      // head
-      ctx.beginPath(); ctx.arc(512,466,28,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-
-      // stars ring
-      ctx.fillStyle='#8a6a38';
-      for(let i=0;i<13;i++){
-        const a=(i/13)*Math.PI*2, r=295;
-        ctx.beginPath();
-        ctx.arc(512+Math.cos(a)*r,512+Math.sin(a)*r,10,0,Math.PI*2);
-        ctx.fill();
-      }
-
-      const tex = new THREE.CanvasTexture(C);
-      const floor = new THREE.Mesh(
-        new THREE.CircleGeometry(9,64),
-        new THREE.MeshLambertMaterial({map:tex})
-      );
-      floor.rotation.x=-Math.PI/2;
-      floor.receiveShadow=true;
-      scene.add(floor);
-    })();
-
-    // ── WALLS: curved oval office ──────────────────────────────
-    (function(){
-      // Back curved wall
-      const wgeo = new THREE.CylinderGeometry(10,10,5.5,48,1,true,
-                                               Math.PI*0.08, Math.PI*0.84);
-      const wall = new THREE.Mesh(wgeo,
-        new THREE.MeshLambertMaterial({color:0xf0e8d8, side:THREE.BackSide}));
-      wall.position.y=2.75; scene.add(wall);
-
-      // Wainscoting
-      const wain = new THREE.Mesh(
-        new THREE.CylinderGeometry(9.9,9.9,1.3,48,1,true,
-                                   Math.PI*0.08, Math.PI*0.84),
-        new THREE.MeshLambertMaterial({color:0xe0d4b8, side:THREE.BackSide})
-      );
-      wain.position.y=0.65; scene.add(wain);
-
-      // Chair rail
-      const rail = new THREE.Mesh(
-        new THREE.CylinderGeometry(9.88,9.88,0.07,48,1,true,
-                                   Math.PI*0.08, Math.PI*0.84),
-        new THREE.MeshLambertMaterial({color:0xffffff, side:THREE.BackSide})
-      );
-      rail.position.y=1.3; scene.add(rail);
-
-      // Ceiling
-      const ceil = new THREE.Mesh(
-        new THREE.CircleGeometry(10,48),
-        new THREE.MeshLambertMaterial({color:0xfdf8f0})
-      );
-      ceil.rotation.x=Math.PI/2; ceil.position.y=5.5; scene.add(ceil);
-
-      // Crown molding
-      const crown = new THREE.Mesh(
-        new THREE.CylinderGeometry(9.85,9.85,0.12,48,1,true,
-                                   Math.PI*0.08, Math.PI*0.84),
-        new THREE.MeshLambertMaterial({color:0xffffff, side:THREE.BackSide})
-      );
-      crown.position.y=5.1; scene.add(crown);
-    })();
-
-    // ── WINDOWS ────────────────────────────────────────────────
-    function makeWindow(x,y,z,ry){
-      const g = new THREE.Group();
-      // frame
-      const frm = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6,2.6,0.12),
-        new THREE.MeshLambertMaterial({color:0xffffff})
-      );
-      g.add(frm);
-      // sky glass
-      const sky = new THREE.Mesh(
-        new THREE.BoxGeometry(1.28,2.18,0.06),
-        new THREE.MeshPhongMaterial({color:0x87ceeb,transparent:true,opacity:0.55,shininess:200})
-      );
-      sky.position.z=0.03; g.add(sky);
-      // curtains
-      const cm = new THREE.MeshLambertMaterial({color:0x8b1c1c});
-      [-0.95,0.95].forEach(cx=>{
-        const c=new THREE.Mesh(new THREE.BoxGeometry(0.32,2.7,0.12),cm);
-        c.position.x=cx; g.add(c);
-      });
-      // pelmet
-      const pel=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.2,0.2),
-        new THREE.MeshLambertMaterial({color:0x7a1414}));
-      pel.position.y=1.35; g.add(pel);
-      g.position.set(x,y,z); g.rotation.y=ry;
-      scene.add(g);
-    }
-    makeWindow(-6.8, 2.5, -4.5,  0.45);
-    makeWindow( 6.8, 2.5, -4.5, -0.45);
-    makeWindow(-8.2, 2.5, -1.0,  0.9);
-    makeWindow( 8.2, 2.5, -1.0, -0.9);
-
-    // ── FIREPLACE (back wall center) ───────────────────────────
-    (function(){
-      // surround
-      const sm = new THREE.MeshLambertMaterial({color:0xe8e0d0});
-      const surround = new THREE.Mesh(new THREE.BoxGeometry(2.2,2.0,0.25),sm);
-      surround.position.set(0,1.0,-8.2); scene.add(surround);
-      // opening
-      const om = new THREE.MeshLambertMaterial({color:0x111111});
-      const opening = new THREE.Mesh(new THREE.BoxGeometry(1.4,1.2,0.3),om);
-      opening.position.set(0,0.7,-8.1); scene.add(opening);
-      // mantel shelf
-      const mm = new THREE.MeshLambertMaterial({color:0xf0ece4});
-      const mantel = new THREE.Mesh(new THREE.BoxGeometry(2.6,0.12,0.35),mm);
-      mantel.position.set(0,2.06,-8.1); scene.add(mantel);
-      // clock on mantel
-      const clock = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.4,0.15),
-        new THREE.MeshLambertMaterial({color:0x3d2b0c}));
-      clock.position.set(0,2.35,-7.95); scene.add(clock);
-      const clockface = new THREE.Mesh(new THREE.CircleGeometry(0.12,16),
-        new THREE.MeshLambertMaterial({color:0xf5f0e8}));
-      clockface.position.set(0,2.35,-7.87); scene.add(clockface);
-    })();
-
-    // ── FLAGS ──────────────────────────────────────────────────
-    function makeFlag(x,z){
-      // pole
-      const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,3.8,8),
-        new THREE.MeshLambertMaterial({color:0xd4a843}));
-      pole.position.set(x,1.9,z); scene.add(pole);
-      pole.castShadow=true;
-      // finial
-      const fin=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),
-        new THREE.MeshPhongMaterial({color:0xd4a843,shininess:100}));
-      fin.position.set(x,3.85,z); scene.add(fin);
-      // flag canvas
-      const C=document.createElement('canvas');
-      C.width=320; C.height=170;
-      const ctx=C.getContext('2d');
-      const sc=['#B22234','#ffffff'];
-      for(let i=0;i<13;i++){
-        ctx.fillStyle=sc[i%2];
-        ctx.fillRect(0,i*(170/13),320,170/13+1);
-      }
-      ctx.fillStyle='#3C3B6E'; ctx.fillRect(0,0,128,90);
-      ctx.fillStyle='#ffffff';
-      for(let r=0;r<5;r++) for(let c=0;c<6;c++){
-        ctx.beginPath();
-        ctx.arc(12+c*20,10+r*17,5,0,Math.PI*2); ctx.fill();
-      }
-      const f=new THREE.Mesh(new THREE.PlaneGeometry(1.0,0.53),
-        new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(C),side:THREE.DoubleSide}));
-      f.position.set(x+0.5,3.22,z); scene.add(f);
-    }
-    makeFlag(-2.8,-7.5);
-    makeFlag( 1.6,-7.5);
-
-    // ── SOFA / CHAIRS (background dressing) ───────────────────
-    (function(){
-      const sofaColor=0xd4c4a0, legC=0x4a3010;
-      // sofa
-      box(3,0.55,0.9, sofaColor, 0,0,0, 0,0.275,-5.5);
-      box(3,0.65,0.25,sofaColor, 0,0,0, 0,0.925,-5.87);
-      box(0.25,0.65,0.9,sofaColor,0,0,0,-1.625,0.925,-5.5);
-      box(0.25,0.65,0.9,sofaColor,0,0,0, 1.625,0.925,-5.5);
-      for(const [px,pz] of [[-1.3,-5.2],[1.3,-5.2],[-1.3,-5.8],[1.3,-5.8]]){
-        box(0.08,0.15,0.08,legC,0,0,0,px,0.075,pz);
-      }
-      // side tables
-      [-2.2,2.2].forEach(sx=>{
-        box(0.6,0.55,0.6,0x8b6914,0,0,0,sx,0.275,-5.5);
-        // lamp
-        const ls=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.6,8),
-          new THREE.MeshLambertMaterial({color:0xb8880c}));
-        ls.position.set(sx,0.85,-5.5); scene.add(ls);
-        const shade=new THREE.Mesh(new THREE.ConeGeometry(0.25,0.4,12,1,true),
-          new THREE.MeshLambertMaterial({color:0xf5dfa0,side:THREE.DoubleSide}));
-        shade.position.set(sx,1.25,-5.5); scene.add(shade);
-        // lamp light
-        const ll=new THREE.PointLight(0xfff0c0,0.5,4);
-        ll.position.set(sx,1.5,-5.5); scene.add(ll);
-      });
-    })();
-
-    // ── RESOLUTE DESK ──────────────────────────────────────────
-    const DESK_Z = 1.5;
-    (function(){
-      const dk=0x4a2c10, dl=0x5e3818, dh=0x6b4020;
-      // top surface
-      const top=new THREE.Mesh(new THREE.BoxGeometry(2.9,0.1,1.5),
-        new THREE.MeshLambertMaterial({color:dh}));
-      top.position.set(0,1.13,DESK_Z);
-      top.castShadow=top.receiveShadow=true; scene.add(top);
-      // leather pad
-      const pad=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.015,1.05),
-        new THREE.MeshLambertMaterial({color:0x1c3a1c}));
-      pad.position.set(0,1.185,DESK_Z); scene.add(pad);
-      // edge trim
-      const trim=new THREE.Mesh(new THREE.BoxGeometry(2.92,0.04,1.52),
-        new THREE.MeshLambertMaterial({color:dl}));
-      trim.position.set(0,1.08,DESK_Z); scene.add(trim);
-      // left pedestal
-      const lp=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.08,1.42),
-        new THREE.MeshLambertMaterial({color:dk}));
-      lp.position.set(-0.88,0.54,DESK_Z);
-      lp.castShadow=lp.receiveShadow=true; scene.add(lp);
-      // right pedestal
-      const rp=lp.clone();
-      rp.position.x=0.88; scene.add(rp);
-      // drawers
-      for(let i=0;i<3;i++){
-        [-0.88,0.88].forEach(px=>{
-          const dr=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.28,0.04),
-            new THREE.MeshLambertMaterial({color:0x3a2008}));
-          dr.position.set(px, 0.78-i*0.32, DESK_Z+0.72);
-          scene.add(dr);
-          const kn=new THREE.Mesh(new THREE.SphereGeometry(0.025,8,8),
-            new THREE.MeshPhongMaterial({color:0xd4a843,shininess:120}));
-          kn.position.set(px,0.78-i*0.32,DESK_Z+0.76); scene.add(kn);
-        });
-      }
-      // desk items: pen holder, papers
-      const ph=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.055,0.2,12),
-        new THREE.MeshLambertMaterial({color:0x1a1a1a}));
-      ph.position.set(-0.8,1.24,DESK_Z-0.3); scene.add(ph);
-      const paper=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.008,0.3),
-        new THREE.MeshLambertMaterial({color:0xf8f4ec}));
-      paper.position.set(0.6,1.19,DESK_Z-0.1); scene.add(paper);
-    })();
-
-    // ── THE BIG RED BUTTON ────────────────────────────────────
-    const buttonGroup = new THREE.Group();
-    buttonGroup.position.set(0.25, 1.18, DESK_Z-0.15);
-    scene.add(buttonGroup);
-
-    // Housing
-    const housing = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24,0.27,0.13,32),
-      new THREE.MeshLambertMaterial({color:0x1a1a1a})
-    );
-    housing.position.y=0.065; buttonGroup.add(housing);
-
-    // Housing top ring
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.22,0.025,8,32),
-      new THREE.MeshPhongMaterial({color:0x333333,shininess:80})
-    );
-    ring.rotation.x=Math.PI/2; ring.position.y=0.13; buttonGroup.add(ring);
-
-    // Button cap (hemisphere)
-    const buttonCapGeo = new THREE.SphereGeometry(0.2,32,16,0,Math.PI*2,0,Math.PI/2);
-    const buttonCapMat = new THREE.MeshPhongMaterial({
-      color:0xdd0000, shininess:160, specular:0xff5555
+  }
+  // Cross links
+  const related = links.filter(l => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source;
+    const tid = typeof l.target === 'object' ? l.target.id : l.target;
+    return (sid===d.id || tid===d.id) && sid!==center && tid!==center;
+  });
+  if(related.length){
+    html += `<div class="section-title" style="margin-top:8px">RELATED NODES</div>`;
+    related.forEach(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source;
+      const tid = typeof l.target === 'object' ? l.target.id : l.target;
+      const otherId = sid===d.id ? tid : sid;
+      const other = nodes.find(n => n.id === otherId);
+      if(other) html += `<div class="row"><span class="key" style="color:${colorMap[other.type]}">${other.label}</span><span class="value">${other.type}</span></div>`;
     });
-    const buttonCap = new THREE.Mesh(buttonCapGeo, buttonCapMat);
-    buttonCap.position.y=0.13; buttonGroup.add(buttonCap);
+  }
+  panel.innerHTML = html;
+}
 
-    // Specular highlight blob
-    const hilight = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055,12,8),
-      new THREE.MeshPhongMaterial({color:0xff9999,transparent:true,opacity:0.7,shininess:300})
-    );
-    hilight.position.set(-0.06,0.26,-0.06); buttonGroup.add(hilight);
+// ─── RESIZE ──────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  let s = getSize();
+  simulation.force('center', d3.forceCenter(s.w/2, s.h/2));
+  simulation.force('x', d3.forceX().x(d => {
+    if(d.type==='supplier') return s.w*0.2;
+    if(d.type==='customer') return s.w*0.8;
+    return s.w/2;
+  }).strength(d => (d.type==='supplier'||d.type==='customer') ? 0.15 : 0));
+  simulation.alpha(0.3).restart();
+});
 
-    // Hit zone
-    const hitZone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.35,0.35,0.55,16),
-      new THREE.MeshBasicMaterial({visible:false})
-    );
-    hitZone.position.y=0.2; buttonGroup.add(hitZone);
-
-    // Gold nameplate
-    const plate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55,0.04,0.14),
-      new THREE.MeshPhongMaterial({color:0xd4a843,shininess:120})
-    );
-    plate.position.set(0, 1.195, DESK_Z+0.05); scene.add(plate);
-
-    // ── HAND ──────────────────────────────────────────────────
-    const handGroup = new THREE.Group();
-    const skinMat = new THREE.MeshPhongMaterial({color:0xf4a460, shininess:40, specular:0x331100});
-
-    // Palm block
-    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.32,0.1,0.36), skinMat);
-    handGroup.add(palm);
-
-    // Knuckle row detail
-    const knuckleRow = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.04,0.04),
-      new THREE.MeshPhongMaterial({color:0xe09050,shininess:60}));
-    knuckleRow.position.set(0,0.05,-0.18); handGroup.add(knuckleRow);
-
-    // Four fingers
-    const fingerDefs = [
-      {x:-0.115, len:0.20, w:0.055},
-      {x:-0.038, len:0.24, w:0.058},
-      {x: 0.038, len:0.23, w:0.057},
-      {x: 0.115, len:0.19, w:0.052},
-    ];
-    fingerDefs.forEach(fd=>{
-      // proximal phalanx
-      const seg1=new THREE.Mesh(
-        new THREE.CylinderGeometry(fd.w/2,fd.w/2*1.05, fd.len*0.45,10),skinMat);
-      seg1.position.set(fd.x, 0.05+fd.len*0.225, -0.2);
-      seg1.rotation.x=0.15; handGroup.add(seg1);
-      // middle
-      const seg2=new THREE.Mesh(
-        new THREE.CylinderGeometry(fd.w/2*0.9,fd.w/2, fd.len*0.32,10),skinMat);
-      seg2.position.set(fd.x, 0.05+fd.len*0.55, -0.24);
-      seg2.rotation.x=0.1; handGroup.add(seg2);
-      // distal (fingertip)
-      const seg3=new THREE.Mesh(
-        new THREE.SphereGeometry(fd.w/2*0.85, 10,8),skinMat);
-      seg3.position.set(fd.x, 0.05+fd.len*0.82, -0.27);
-      handGroup.add(seg3);
-      // fingernail
-      const nail=new THREE.Mesh(new THREE.BoxGeometry(fd.w*0.7,0.01,0.04),
-        new THREE.MeshPhongMaterial({color:0xffddb8,shininess:120}));
-      nail.position.set(fd.x,0.05+fd.len*0.85,-0.285);
-      handGroup.add(nail);
-    });
-
-    // Thumb
-    const thumbBase=new THREE.Mesh(
-      new THREE.CylinderGeometry(0.038,0.042,0.18,10),skinMat);
-    thumbBase.rotation.set(0.3,0.5,-Math.PI/3);
-    thumbBase.position.set(0.19,0.02,-0.04); handGroup.add(thumbBase);
-    const thumbTip=new THREE.Mesh(
-      new THREE.SphereGeometry(0.036,10,8),skinMat);
-    thumbTip.position.set(0.22,-0.06,0.02); handGroup.add(thumbTip);
-
-    // Wrist / cuff
-    const cuff=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.2,0.28,14),
-      new THREE.MeshLambertMaterial({color:0xf5f0ea}));
-    cuff.position.set(0,-0.14,0.12); handGroup.add(cuff);
-    const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.22,0.5,14),
-      new THREE.MeshLambertMaterial({color:0x1a2d50}));
-    sleeve.position.set(0,-0.38,0.12); handGroup.add(sleeve);
-
-    // Initial position: hovering above button
-    handGroup.position.set(0.25, 2.35, DESK_Z-0.15);
-    handGroup.rotation.x = 0.35;
-    scene.add(handGroup);
-
-    // ── COKE CANS ─────────────────────────────────────────────
-    const activeCans = [];
-
-    function makeCokeCan(){
-      const g = new THREE.Group();
-      const canMat = new THREE.MeshPhongMaterial({color:0xcc0000,shininess:90});
-      const body=new THREE.Mesh(new THREE.CylinderGeometry(0.065,0.065,0.21,20),canMat);
-      g.add(body);
-      const top=new THREE.Mesh(new THREE.CylinderGeometry(0.054,0.064,0.022,20),
-        new THREE.MeshPhongMaterial({color:0xc0c0c0,shininess:180}));
-      top.position.y=0.116; g.add(top);
-      const bot=top.clone(); bot.position.y=-0.116; g.add(bot);
-      // white wave stripe
-      const stripe=new THREE.Mesh(
-        new THREE.CylinderGeometry(0.067,0.067,0.08,20,1,true),
-        new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.BackSide,transparent:true,opacity:0.9}));
-      g.add(stripe);
-      // tab
-      const tab=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.005,0.04),
-        new THREE.MeshPhongMaterial({color:0xaaaaaa,shininess:200}));
-      tab.position.set(0.01,0.128,-0.02); g.add(tab);
-      return g;
-    }
-
-    function spawnCoke(){
-      const can = makeCokeCan();
-      can.position.set(0.25, 1.4, DESK_Z-0.15);
-      scene.add(can);
-      const ang = (Math.random()-0.5)*Math.PI*1.2;
-      const spd = 0.055+Math.random()*0.04;
-      activeCans.push({
-        mesh: can,
-        vx: Math.sin(ang)*spd,
-        vy: 0.12+Math.random()*0.07,
-        vz: -spd*0.4 - Math.random()*0.04,
-        rx: (Math.random()-0.5)*0.18,
-        rz: (Math.random()-0.5)*0.12,
-        life: 1.8
-      });
-    }
-
-    // ── FLOAT TEXT SPRITES ────────────────────────────────────
-    const floatTexts=[];
-    const floatMsgs=[
-      "Enjoy your Coke!","Ice cold! 🧊","The real thing!",
-      "Executive order: COKE","Presidential refreshment!","Yes we can! 🥤",
-      "Coke time!","Classified: top secret flavour","Drink up, Mr. President"
-    ];
-
-    function spawnFloatText(txt){
-      const C=document.createElement('canvas');
-      C.width=512; C.height=80;
-      const ctx=C.getContext('2d');
-      ctx.font='bold 42px Georgia';
-      ctx.fillStyle='#f5c518';
-      ctx.textAlign='center';
-      ctx.shadowColor='rgba(0,0,0,0.8)';
-      ctx.shadowBlur=8;
-      ctx.fillText(txt,256,54);
-      const sp=new THREE.Sprite(new THREE.SpriteMaterial({
-        map:new THREE.CanvasTexture(C),transparent:true
-      }));
-      sp.scale.set(2,0.32,1);
-      sp.position.set(0.25+(Math.random()-0.5)*0.5, 1.9, DESK_Z-0.5);
-      scene.add(sp);
-      floatTexts.push({sp,vy:0.018,life:1.0});
-    }
-
-    // ── INPUT ─────────────────────────────────────────────────
-    const raycaster = new THREE.Raycaster();
-    const mouse     = new THREE.Vector2();
-    let cokeCount   = 0;
-    let handState   = 'idle';  // idle | pressing | hold | releasing
-    let handTimer   = 0;
-    let handBaseY   = 2.35;
-    const PRESS_Y   = 1.68;
-
-    const countEl   = document.getElementById('count');
-    const msgEl     = document.getElementById('message');
-
-    function doPress(){
-      if(handState !== 'idle') return;
-      handState = 'pressing';
-      cokeCount++;
-      countEl.textContent = cokeCount;
-      msgEl.textContent = floatMsgs[Math.floor(Math.random()*floatMsgs.length)];
-      for(let i=0;i<3;i++) setTimeout(spawnCoke, i*110);
-      spawnFloatText('+1 🥤');
-    }
-
-    renderer.domElement.addEventListener('click', e=>{
-      mouse.x=(e.clientX/innerWidth)*2-1;
-      mouse.y=-(e.clientY/innerHeight)*2+1;
-      raycaster.setFromCamera(mouse,camera);
-      if(raycaster.intersectObjects(buttonGroup.children,true).length) doPress();
-    });
-
-    // Cursor hint
-    renderer.domElement.addEventListener('mousemove', e=>{
-      mouse.x=(e.clientX/innerWidth)*2-1;
-      mouse.y=-(e.clientY/innerHeight)*2+1;
-      raycaster.setFromCamera(mouse,camera);
-      const hit=raycaster.intersectObjects(buttonGroup.children,true).length>0;
-      renderer.domElement.style.cursor=hit?'pointer':'default';
-    });
-
-    // ── ANIMATE ───────────────────────────────────────────────
-    const clock = new THREE.Clock();
-    let t = 0;
-
-    function animate(){
-      requestAnimationFrame(animate);
-      const dt = Math.min(clock.getDelta(), 0.05);
-      t += dt;
-
-      // Hand state machine
-      switch(handState){
-        case 'idle':
-          // hover bob
-          handGroup.position.y = handBaseY + Math.sin(t*1.8)*0.035;
-          break;
-        case 'pressing':
-          handGroup.position.y -= dt*4.5;
-          if(handGroup.position.y <= PRESS_Y){
-            handGroup.position.y = PRESS_Y;
-            // squish button
-            buttonCap.scale.y = 0.65;
-            buttonCap.position.y = 0.09;
-            handState = 'hold'; handTimer = 0.12;
-          }
-          break;
-        case 'hold':
-          handTimer -= dt;
-          if(handTimer <= 0) handState = 'releasing';
-          break;
-        case 'releasing':
-          handGroup.position.y += dt*5;
-          // restore button
-          buttonCap.scale.y = Math.min(1, buttonCap.scale.y + dt*4);
-          buttonCap.position.y = Math.min(0.13, buttonCap.position.y + dt*0.3);
-          if(handGroup.position.y >= handBaseY){
-            handGroup.position.y = handBaseY;
-            handState = 'idle';
-          }
-          break;
-      }
-
-      // Coke cans physics
-      for(let i=activeCans.length-1;i>=0;i--){
-        const c=activeCans[i];
-        c.mesh.position.x+=c.vx;
-        c.mesh.position.y+=c.vy;
-        c.mesh.position.z+=c.vz;
-        c.vy -= dt*3.5;
-        c.mesh.rotation.x+=c.rx;
-        c.mesh.rotation.z+=c.rz;
-        c.life-=dt*0.55;
-        c.mesh.material && (c.mesh.material.opacity=c.life);
-        if(c.life<=0||c.mesh.position.y<-1){
-          scene.remove(c.mesh); activeCans.splice(i,1);
-        }
-      }
-
-      // Float texts
-      for(let i=floatTexts.length-1;i>=0;i--){
-        const f=floatTexts[i];
-        f.sp.position.y+=f.vy;
-        f.life-=dt*0.7;
-        f.sp.material.opacity=Math.max(0,f.life);
-        if(f.life<=0){ scene.remove(f.sp); floatTexts.splice(i,1); }
-      }
-
-      // Subtle camera drift
-      camera.position.x = Math.sin(t*0.18)*0.12;
-      camera.position.y = 2.8 + Math.sin(t*0.25)*0.06;
-      camera.lookAt(0,1.2,0);
-
-      renderer.render(scene,camera);
-    }
-    animate();
-
-    window.addEventListener('resize',()=>{
-      camera.aspect=innerWidth/innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth,innerHeight);
-    });
-  })();
-  </script>
+// Keyboard clicks (cosmetic)
+document.querySelectorAll('.kbd').forEach(k => {
+  k.addEventListener('click', () => {
+    k.style.transform = 'scale(0.92)';
+    setTimeout(() => k.style.transform = '', 100);
+  });
+});
+</script>
 </body>
 </html>
